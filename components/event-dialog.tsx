@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -26,19 +25,36 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>([])
   const [formData, setFormData] = useState({
-    titulo: event?.titulo || "",
-    descripcion: event?.descripcion || "",
-    fecha: event?.fecha || defaultDate || "",
-    hora: event?.hora || "",
-    clienteId: event?.clienteId || "none", // Updated default value to "none"
+    titulo: "",
+    descripcion: "",
+    fecha: defaultDate || "",
+    hora: "",
+    clienteId: "none",
   })
   const { toast } = useToast()
 
+  // Cargar datos del evento cuando cambia (para edición)
   useEffect(() => {
     if (open) {
       fetchClients()
-      if (!event && defaultDate) {
-        setFormData((prev) => ({ ...prev, fecha: defaultDate }))
+      if (event) {
+        // Edición: cargar datos del evento
+        setFormData({
+          titulo: event.titulo || "",
+          descripcion: event.descripcion || "",
+          fecha: event.fecha || "",
+          hora: event.hora || "",
+          clienteId: event.clienteId || "none",
+        })
+      } else {
+        // Nuevo: resetear y usar defaultDate si hay
+        setFormData({
+          titulo: "",
+          descripcion: "",
+          fecha: defaultDate || "",
+          hora: "",
+          clienteId: "none",
+        })
       }
     }
   }, [open, event, defaultDate])
@@ -91,7 +107,6 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
 
       onSuccess()
       onOpenChange(false)
-      setFormData({ titulo: "", descripcion: "", fecha: "", hora: "", clienteId: "none" }) // Updated default value to "none"
     } catch (error) {
       console.error("[v0] Error saving event:", error)
       toast({
@@ -171,7 +186,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
                 <SelectValue placeholder="Seleccionar cliente" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin cliente</SelectItem> {/* Updated value to "none" */}
+                <SelectItem value="none">Sin cliente</SelectItem>
                 {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.nombre}

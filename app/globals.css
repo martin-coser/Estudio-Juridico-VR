@@ -4,96 +4,110 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Legal office theme - Dark blue, white, gray with golden accents */
-  --background: oklch(0.98 0.002 240);
-  --foreground: oklch(0.15 0.02 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.02 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.02 240);
+  /* Paleta elegante para estudio jurídico: marrón, beige, crema, blanco */
 
-  /* Navy blue primary */
-  --primary: oklch(0.25 0.05 240);
-  --primary-foreground: oklch(0.98 0.002 240);
+  /* Fondo principal: crema claro #FDFBF7 */
+  --background: oklch(98.5% 0.01 80);
 
-  /* Gray secondary */
-  --secondary: oklch(0.94 0.005 240);
-  --secondary-foreground: oklch(0.25 0.05 240);
+  /* Texto principal: marrón oscuro #4A3C31 */
+  --foreground: oklch(25% 0.04 50);
 
-  --muted: oklch(0.96 0.005 240);
-  --muted-foreground: oklch(0.5 0.02 240);
+  /* Cards y popovers: blanco puro */
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(25% 0.04 50);
 
-  /* Golden accent */
-  --accent: oklch(0.75 0.15 70);
-  --accent-foreground: oklch(0.15 0.02 240);
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(25% 0.04 50);
 
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* Primario: marrón chocolate #6B5A48 */
+  --primary: oklch(40% 0.05 45);
+  --primary-foreground: oklch(98% 0.01 80);
 
-  --border: oklch(0.9 0.005 240);
-  --input: oklch(0.9 0.005 240);
-  --ring: oklch(0.75 0.15 70);
+  /* Secundario: beige claro #E8E1D6 */
+  --secondary: oklch(92% 0.02 80);
+  --secondary-foreground: oklch(25% 0.04 50);
 
-  --chart-1: oklch(0.55 0.2 240);
-  --chart-2: oklch(0.75 0.15 70);
-  --chart-3: oklch(0.45 0.15 200);
-  --chart-4: oklch(0.65 0.12 180);
-  --chart-5: oklch(0.7 0.18 220);
+  /* Muted: marrón claro grisáceo #D1C4B2 */
+  --muted: oklch(80% 0.03 70);
+  --muted-foreground: oklch(50% 0.03 70);
+
+  /* Accent: marrón claro #A07E5F */
+  --accent: oklch(65% 0.08 50);
+  --accent-foreground: oklch(98% 0.01 80);
+
+  /* Destructive: rojo sobrio (para eliminar) */
+  --destructive: oklch(55% 0.2 30);
+  --destructive-foreground: oklch(98% 0.01 80);
+
+  /* Borders e inputs: #D1C4B2 */
+  --border: oklch(80% 0.03 70);
+  --input: oklch(80% 0.03 70);
+  --ring: oklch(40% 0.05 45);
+
+  /* Charts: tonos marrones y beige */
+  --chart-1: oklch(40% 0.05 45); /* marrón oscuro */
+  --chart-2: oklch(65% 0.08 50); /* marrón claro */
+  --chart-3: oklch(80% 0.03 70); /* beige */
+  --chart-4: oklch(55% 0.05 55); /* marrón medio */
+  --chart-5: oklch(90% 0.02 80); /* crema */
 
   --radius: 0.5rem;
 
-  --sidebar: oklch(0.98 0.002 240);
-  --sidebar-foreground: oklch(0.25 0.05 240);
-  --sidebar-primary: oklch(0.25 0.05 240);
-  --sidebar-primary-foreground: oklch(0.98 0.002 240);
-  --sidebar-accent: oklch(0.75 0.15 70);
-  --sidebar-accent-foreground: oklch(0.15 0.02 240);
-  --sidebar-border: oklch(0.9 0.005 240);
-  --sidebar-ring: oklch(0.75 0.15 70);
+  /* Sidebar: marrón chocolate #6B5A48 */
+  --sidebar: oklch(40% 0.05 45);
+  --sidebar-foreground: oklch(98% 0.01 80);
+  --sidebar-primary: oklch(65% 0.08 50);
+  --sidebar-primary-foreground: oklch(98% 0.01 80);
+  --sidebar-accent: oklch(80% 0.03 70);
+  --sidebar-accent-foreground: oklch(98% 0.01 80);
+  --sidebar-border: oklch(80% 0.03 70);
+  --sidebar-ring: oklch(40% 0.05 45);
 }
 
 .dark {
-  /* Dark theme for professional look */
-  --background: oklch(0.12 0.02 240);
-  --foreground: oklch(0.98 0.002 240);
-  --card: oklch(0.18 0.02 240);
-  --card-foreground: oklch(0.98 0.002 240);
-  --popover: oklch(0.15 0.02 240);
-  --popover-foreground: oklch(0.98 0.002 240);
+  /* Modo oscuro: más sobrio, con marrón oscuro y beige claro */
+  --background: oklch(25% 0.04 50); /* marrón oscuro */
+  --foreground: oklch(98% 0.01 80); /* beige claro */
 
-  --primary: oklch(0.75 0.15 70);
-  --primary-foreground: oklch(0.12 0.02 240);
+  --card: oklch(30% 0.04 55);
+  --card-foreground: oklch(98% 0.01 80);
 
-  --secondary: oklch(0.22 0.02 240);
-  --secondary-foreground: oklch(0.98 0.002 240);
+  --popover: oklch(28% 0.04 52);
+  --popover-foreground: oklch(98% 0.01 80);
 
-  --muted: oklch(0.22 0.02 240);
-  --muted-foreground: oklch(0.65 0.01 240);
+  --primary: oklch(65% 0.08 50); /* marrón claro */
+  --primary-foreground: oklch(25% 0.04 50);
 
-  --accent: oklch(0.75 0.15 70);
-  --accent-foreground: oklch(0.12 0.02 240);
+  --secondary: oklch(40% 0.05 45);
+  --secondary-foreground: oklch(98% 0.01 80);
 
-  --destructive: oklch(0.5 0.2 27.325);
-  --destructive-foreground: oklch(0.98 0.002 240);
+  --muted: oklch(45% 0.05 55);
+  --muted-foreground: oklch(80% 0.03 70);
 
-  --border: oklch(0.25 0.02 240);
-  --input: oklch(0.25 0.02 240);
-  --ring: oklch(0.75 0.15 70);
+  --accent: oklch(65% 0.08 50);
+  --accent-foreground: oklch(25% 0.04 50);
 
-  --chart-1: oklch(0.6 0.2 240);
-  --chart-2: oklch(0.75 0.15 70);
-  --chart-3: oklch(0.55 0.15 200);
-  --chart-4: oklch(0.7 0.12 180);
-  --chart-5: oklch(0.75 0.18 220);
+  --destructive: oklch(60% 0.2 30);
+  --destructive-foreground: oklch(98% 0.01 80);
 
-  --sidebar: oklch(0.15 0.02 240);
-  --sidebar-foreground: oklch(0.98 0.002 240);
-  --sidebar-primary: oklch(0.75 0.15 70);
-  --sidebar-primary-foreground: oklch(0.12 0.02 240);
-  --sidebar-accent: oklch(0.22 0.02 240);
-  --sidebar-accent-foreground: oklch(0.98 0.002 240);
-  --sidebar-border: oklch(0.25 0.02 240);
-  --sidebar-ring: oklch(0.75 0.15 70);
+  --border: oklch(50% 0.05 55);
+  --input: oklch(50% 0.05 55);
+  --ring: oklch(65% 0.08 50);
+
+  --chart-1: oklch(65% 0.08 50);
+  --chart-2: oklch(40% 0.05 45);
+  --chart-3: oklch(80% 0.03 70);
+  --chart-4: oklch(55% 0.05 55);
+  --chart-5: oklch(90% 0.02 80);
+
+  --sidebar: oklch(30% 0.04 55);
+  --sidebar-foreground: oklch(98% 0.01 80);
+  --sidebar-primary: oklch(65% 0.08 50);
+  --sidebar-primary-foreground: oklch(25% 0.04 50);
+  --sidebar-accent: oklch(45% 0.05 55);
+  --sidebar-accent-foreground: oklch(98% 0.01 80);
+  --sidebar-border: oklch(50% 0.05 55);
+  --sidebar-ring: oklch(65% 0.08 50);
 }
 
 @theme inline {

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -27,33 +26,71 @@ const caseTypes = ["SRT", "ART", "FAMILIA", "LABORAL DESPIDOS", "DAÑOS Y PERJUI
 export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDialogProps) {
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>([])
-  const [step, setStep] = useState<"type" | "form">(caseData ? "form" : "type")
   const [clientDialogOpen, setClientDialogOpen] = useState(false)
+
+  // Estado para el step: edición -> directo "form", nuevo -> "type"
+  const [step, setStep] = useState<"type" | "form">(caseData ? "form" : "type")
+
+  // FormData inicial: carga caseData si es edición, vacíos si es nuevo
   const [formData, setFormData] = useState<Partial<Case>>({
     tipo: caseData?.tipo || "SRT",
     nombre: caseData?.nombre || "",
     clienteId: caseData?.clienteId || "",
     patologia: caseData?.patologia || "",
-    estado: caseData?.estado || "",
     expediente: caseData?.expediente || "",
-    homologacionSentencia: caseData?.homologacionSentencia || "",
     nombreCaso: caseData?.nombreCaso || "",
     tipoProceso: caseData?.tipoProceso || "",
     motivo: caseData?.motivo || "",
     dependencia: caseData?.dependencia || "",
     telefono: caseData?.telefono || "",
+    estado: caseData?.estado || "",
+    homologacionSentencia: caseData?.homologacionSentencia || "",
     plazo: caseData?.plazo || "",
     estadoPago: caseData?.estadoPago || "Debe",
   })
+
   const { toast } = useToast()
 
   useEffect(() => {
     if (open) {
       fetchClients()
-      if (!caseData) {
+
+      if (caseData) {
+        // Edición: cargar datos y directo al formulario
+        setStep("form")
+        setFormData({
+          tipo: caseData.tipo,
+          nombre: caseData.nombre || "",
+          clienteId: caseData.clienteId || "",
+          patologia: caseData.patologia || "",
+          expediente: caseData.expediente || "",
+          nombreCaso: caseData.nombreCaso || "",
+          tipoProceso: caseData.tipoProceso || "",
+          motivo: caseData.motivo || "",
+          dependencia: caseData.dependencia || "",
+          telefono: caseData.telefono || "",
+          estado: caseData.estado || "",
+          homologacionSentencia: caseData.homologacionSentencia || "",
+          plazo: caseData.plazo || "",
+          estadoPago: caseData.estadoPago || "Debe",
+        })
+      } else {
+        // Nuevo: resetear a valores vacíos y step "type"
         setStep("type")
         setFormData({
           tipo: "SRT",
+          nombre: "",
+          clienteId: "",
+          patologia: "",
+          expediente: "",
+          nombreCaso: "",
+          tipoProceso: "",
+          motivo: "",
+          dependencia: "",
+          telefono: "",
+          estado: "",
+          homologacionSentencia: "",
+          plazo: "",
           estadoPago: "Debe",
         })
       }
@@ -88,21 +125,21 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
       const selectedClient = clients.find((c) => c.id === formData.clienteId)
 
       if (caseData) {
-        // Update existing case
+        // Edición
         const caseRef = doc(db, "cases", caseData.id)
         await updateDoc(caseRef, {
           ...formData,
-          clienteNombre: selectedClient?.nombre,
+          clienteNombre: selectedClient?.nombre || "",
         })
         toast({
           title: "Caso actualizado",
           description: "El caso ha sido actualizado correctamente.",
         })
       } else {
-        // Create new case
+        // Nuevo
         await addDoc(collection(db, "cases"), {
           ...formData,
-          clienteNombre: selectedClient?.nombre,
+          clienteNombre: selectedClient?.nombre || "",
           createdAt: Date.now(),
         })
         toast({
@@ -113,7 +150,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
 
       onSuccess()
       onOpenChange(false)
-      setStep("type")
+      setStep("type") // Reset para la próxima vez
     } catch (error) {
       console.error("[v0] Error saving case:", error)
       toast({
@@ -145,7 +182,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
   )
 
   const renderForm = () => {
-    const isSRT = formData.tipo === "SRT"
+    const isSRTorART = formData.tipo === "SRT" || formData.tipo === "ART"
 
     return (
       <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -154,12 +191,12 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           <p className="text-sm font-medium text-accent">Tipo de Caso: {formData.tipo}</p>
         </div>
 
-        {/* Common fields */}
+        {/* Campos comunes a TODOS */}
         <div className="space-y-2">
           <Label htmlFor="nombre">Nombre *</Label>
           <Input
             id="nombre"
-            value={formData.nombre}
+            value={formData.nombre ?? ""}
             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
             required
             placeholder="Nombre del caso"
@@ -170,7 +207,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           <Label htmlFor="cliente">Cliente *</Label>
           <div className="flex gap-2">
             <Select
-              value={formData.clienteId}
+              value={formData.clienteId ?? ""}
               onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
             >
               <SelectTrigger className="flex-1">
@@ -195,164 +232,116 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           </div>
         </div>
 
-        {/* SRT-specific fields */}
-        {isSRT && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="patologia">Patología</Label>
-              <Input
-                id="patologia"
-                value={formData.patologia}
-                onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
-                placeholder="Descripción de la patología"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="expediente">Expediente (Número)</Label>
+          <Input
+            id="expediente"
+            value={formData.expediente ?? ""}
+            onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
+            placeholder="Número de expediente"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado</Label>
-              <Input
-                id="estado"
-                value={formData.estado}
-                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                placeholder="Estado del caso"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="nombreCaso">Nombre del Caso</Label>
+          <Input
+            id="nombreCaso"
+            value={formData.nombreCaso ?? ""}
+            onChange={(e) => setFormData({ ...formData, nombreCaso: e.target.value })}
+            placeholder="Nombre descriptivo del caso"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="expediente">Expediente</Label>
-              <Input
-                id="expediente"
-                value={formData.expediente}
-                onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
-                placeholder="Número de expediente"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="tipoProceso">Tipo de Proceso</Label>
+          <Input
+            id="tipoProceso"
+            value={formData.tipoProceso ?? ""}
+            onChange={(e) => setFormData({ ...formData, tipoProceso: e.target.value })}
+            placeholder="Tipo de proceso judicial"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="homologacionSentencia">Homologación/Sentencia</Label>
-              <Textarea
-                id="homologacionSentencia"
-                value={formData.homologacionSentencia}
-                onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
-                placeholder="Detalles de homologación o sentencia"
-                rows={3}
-              />
-            </div>
-          </>
+        <div className="space-y-2">
+          <Label htmlFor="motivo">Motivo</Label>
+          <Textarea
+            id="motivo"
+            value={formData.motivo ?? ""}
+            onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+            placeholder="Motivo del caso"
+            rows={2}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dependencia">Dependencia</Label>
+          <Input
+            id="dependencia"
+            value={formData.dependencia ?? ""}
+            onChange={(e) => setFormData({ ...formData, dependencia: e.target.value })}
+            placeholder="Dependencia judicial"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="telefono">Teléfono</Label>
+          <Input
+            id="telefono"
+            value={formData.telefono ?? ""}
+            onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+            placeholder="Teléfono de contacto"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="estado">Estado</Label>
+          <Input
+            id="estado"
+            value={formData.estado ?? ""}
+            onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+            placeholder="Estado del caso"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="homologacionSentencia">Homologación/Sentencia</Label>
+          <Textarea
+            id="homologacionSentencia"
+            value={formData.homologacionSentencia ?? ""}
+            onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
+            placeholder="Detalles de homologación o sentencia"
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="plazo">Plazo (Fecha)</Label>
+          <Input
+            id="plazo"
+            type="date"
+            value={formData.plazo ?? ""}
+            onChange={(e) => setFormData({ ...formData, plazo: e.target.value })}
+          />
+        </div>
+
+        {/* Patología solo para SRT y ART */}
+        {isSRTorART && (
+          <div className="space-y-2">
+            <Label htmlFor="patologia">Patología</Label>
+            <Input
+              id="patologia"
+              value={formData.patologia ?? ""}
+              onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
+              placeholder="Descripción de la patología"
+            />
+          </div>
         )}
 
-        {/* ART, FAMILIA, LABORAL, DAÑOS fields */}
-        {!isSRT && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="patologia">Patología</Label>
-              <Input
-                id="patologia"
-                value={formData.patologia}
-                onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
-                placeholder="Descripción de la patología"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="expediente">Expediente (Número)</Label>
-              <Input
-                id="expediente"
-                value={formData.expediente}
-                onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
-                placeholder="Número de expediente"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="nombreCaso">Nombre del Caso</Label>
-              <Input
-                id="nombreCaso"
-                value={formData.nombreCaso}
-                onChange={(e) => setFormData({ ...formData, nombreCaso: e.target.value })}
-                placeholder="Nombre descriptivo del caso"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tipoProceso">Tipo de Proceso</Label>
-              <Input
-                id="tipoProceso"
-                value={formData.tipoProceso}
-                onChange={(e) => setFormData({ ...formData, tipoProceso: e.target.value })}
-                placeholder="Tipo de proceso judicial"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="motivo">Motivo</Label>
-              <Textarea
-                id="motivo"
-                value={formData.motivo}
-                onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
-                placeholder="Motivo del caso"
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dependencia">Dependencia</Label>
-              <Input
-                id="dependencia"
-                value={formData.dependencia}
-                onChange={(e) => setFormData({ ...formData, dependencia: e.target.value })}
-                placeholder="Dependencia judicial"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="telefono">Teléfono</Label>
-              <Input
-                id="telefono"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                placeholder="Teléfono de contacto"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado</Label>
-              <Input
-                id="estado"
-                value={formData.estado}
-                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                placeholder="Estado del caso"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="homologacionSentencia">Homologación/Sentencia</Label>
-              <Textarea
-                id="homologacionSentencia"
-                value={formData.homologacionSentencia}
-                onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
-                placeholder="Detalles de homologación o sentencia"
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="plazo">Plazo (Fecha)</Label>
-              <Input
-                id="plazo"
-                type="date"
-                value={formData.plazo}
-                onChange={(e) => setFormData({ ...formData, plazo: e.target.value })}
-              />
-            </div>
-          </>
-        )}
-
-        {/* Payment status */}
+        {/* Estado de pago */}
         <div className="space-y-2">
           <Label htmlFor="estadoPago">Estado de Pago *</Label>
           <Select
-            value={formData.estadoPago}
+            value={formData.estadoPago ?? "Debe"}
             onValueChange={(value: "Pagado" | "Debe") => setFormData({ ...formData, estadoPago: value })}
           >
             <SelectTrigger>
@@ -369,16 +358,10 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              if (caseData) {
-                onOpenChange(false)
-              } else {
-                setStep("type")
-              }
-            }}
+            onClick={() => onOpenChange(false)}
             disabled={loading}
           >
-            {caseData ? "Cancelar" : "Atrás"}
+            Cancelar
           </Button>
           <Button type="submit" disabled={loading} className="bg-accent text-accent-foreground hover:bg-accent/90">
             {loading ? "Guardando..." : caseData ? "Actualizar" : "Crear"}

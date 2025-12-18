@@ -27,7 +27,7 @@ export default function AgendaPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>()
+  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null)
@@ -110,11 +110,14 @@ export default function AgendaPage() {
   }
 
   const upcomingEvents = events.filter((event) => {
-    const eventDate = new Date(event.fecha)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return eventDate >= today
+    const today = new Date().toISOString().split("T")[0]
+    return event.fecha >= today
   })
+
+  const isToday = (dateStr: string) => {
+    const today = new Date().toISOString().split("T")[0]
+    return dateStr === today
+  }
 
   const monthNames = [
     "Enero",
@@ -153,7 +156,7 @@ export default function AgendaPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Calendar */}
+          {/* Calendar (sin cambios, tamaño original) */}
           <Card className="lg:col-span-2">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -191,7 +194,7 @@ export default function AgendaPage() {
                     const day = i + 1
                     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
                     const dayEvents = getEventsForDate(dateStr)
-                    const isToday = dateStr === new Date().toISOString().split("T")[0]
+                    const isTodayEvent = isToday(dateStr)
 
                     return (
                       <button
@@ -202,10 +205,10 @@ export default function AgendaPage() {
                         }}
                         className={cn(
                           "p-2 rounded-lg text-center transition-colors hover:bg-accent/20 relative min-h-[60px] flex flex-col items-start justify-start",
-                          isToday && "bg-accent/10 border border-accent",
+                          isTodayEvent && "bg-accent/10 border border-accent font-medium",
                         )}
                       >
-                        <span className={cn("text-sm font-medium", isToday && "text-accent")}>{day}</span>
+                        <span className={cn("text-sm font-medium", isTodayEvent && "text-accent")}>{day}</span>
                         {dayEvents.length > 0 && (
                           <div className="mt-1 space-y-0.5 w-full">
                             {dayEvents.slice(0, 2).map((event) => (
@@ -226,13 +229,13 @@ export default function AgendaPage() {
             </CardContent>
           </Card>
 
-          {/* Upcoming events */}
-          <Card>
+          {/* Próximos eventos con scroll vertical fijo */}
+          <Card className="h-full">
             <CardHeader>
               <CardTitle>Próximos Eventos</CardTitle>
               <CardDescription>{upcomingEvents.length} eventos programados</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
@@ -240,55 +243,75 @@ export default function AgendaPage() {
               ) : upcomingEvents.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">No hay eventos próximos</div>
               ) : (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                  {upcomingEvents.map((event) => (
-                    <div key={event.id} className="border rounded-lg p-3 space-y-2 hover:bg-accent/5 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold text-sm leading-tight">{event.titulo}</h4>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(event)}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              setEventToDelete(event)
-                              setDeleteDialogOpen(true)
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                <div className="h-[500px] overflow-y-auto"> {/* Scroll vertical fijo */}
+                  <div className="space-y-3 px-6 pb-6">
+                    {upcomingEvents.map((event) => {
+                      const isTodayEvent = isToday(event.fecha)
+                      return (
+                        <div
+                          key={event.id}
+                          className={cn(
+                            "border rounded-lg p-3 space-y-2 transition-colors",
+                            isTodayEvent ? "bg-accent/10 border-accent" : "border-border hover:bg-accent/5"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className={cn("font-semibold text-sm leading-tight", isTodayEvent && "text-accent")}>
+                              {event.titulo}
+                            </h4>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(event)}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => {
+                                  setEventToDelete(event)
+                                  setDeleteDialogOpen(true)
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {event.descripcion && <p className="text-xs text-muted-foreground">{event.descripcion}</p>}
+
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="outline" className="gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {event.fecha}
+                            </Badge>
+                            <Badge variant="outline" className="gap-1">
+                              <Clock className="h-3 w-3" />
+                              {event.hora}
+                            </Badge>
+                            {event.clienteNombre && (
+                              <Badge variant="outline" className="gap-1">
+                                <User className="h-3 w-3" />
+                                {event.clienteNombre}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {isTodayEvent && (
+                            <Badge variant="secondary" className="mt-2 bg-accent/20 text-accent border-accent/30">
+                              Hoy
+                            </Badge>
+                          )}
                         </div>
-                      </div>
-
-                      {event.descripcion && <p className="text-xs text-muted-foreground">{event.descripcion}</p>}
-
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <Badge variant="outline" className="gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {event.fecha}
-                        </Badge>
-                        <Badge variant="outline" className="gap-1">
-                          <Clock className="h-3 w-3" />
-                          {event.hora}
-                        </Badge>
-                        {event.clienteNombre && (
-                          <Badge variant="outline" className="gap-1">
-                            <User className="h-3 w-3" />
-                            {event.clienteNombre}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
+        {/* Modal de evento */}
         <EventDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}

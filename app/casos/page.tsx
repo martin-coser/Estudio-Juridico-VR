@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { CaseDialog } from "@/components/case-dialog"
-import { Plus, Search, Pencil, Trash2, Filter } from "lucide-react"
+import { CaseDetailsDialog } from "@/components/case-details-dialog" // Asegúrate de que la ruta sea correcta
+import { Plus, Search, Pencil, Trash2, Filter, Eye } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, deleteDoc, doc, orderBy, query, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -31,6 +32,7 @@ export default function CasosPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedCase, setSelectedCase] = useState<Case | undefined>()
+  const [detailsOpen, setDetailsOpen] = useState(false) // Nuevo estado para el modal de detalles
   const [filters, setFilters] = useState({
     search: "",
     tipo: "all",
@@ -233,9 +235,9 @@ export default function CasosPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Cliente</TableHead>
                       <TableHead>Expediente</TableHead>
+                      <TableHead>Caso</TableHead>
+                      <TableHead>Cliente</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Plazo</TableHead>
                       <TableHead>Estado de Pago</TableHead>
@@ -250,9 +252,9 @@ export default function CasosPage() {
                             {caseData.tipo}
                           </Badge>
                         </TableCell>
+                        <TableCell>{caseData.expediente || "-"}</TableCell>
                         <TableCell className="font-medium">{caseData.nombre}</TableCell>
                         <TableCell>{caseData.clienteNombre || "-"}</TableCell>
-                        <TableCell>{caseData.expediente || "-"}</TableCell>
                         <TableCell>{caseData.estado || "-"}</TableCell>
                         <TableCell>{caseData.plazo || "-"}</TableCell>
                         <TableCell>
@@ -271,9 +273,28 @@ export default function CasosPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(caseData)}>
+                            {/* Botón Ver Detalles (ojito) */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedCase(caseData)
+                                setDetailsOpen(true)
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+
+                            {/* Editar */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(caseData)}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
+
+                            {/* Eliminar */}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -282,7 +303,7 @@ export default function CasosPage() {
                                 setDeleteDialogOpen(true)
                               }}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
                         </TableCell>
@@ -295,8 +316,19 @@ export default function CasosPage() {
           </CardContent>
         </Card>
 
+        {/* Modal de detalles */}
+        {selectedCase && (
+          <CaseDetailsDialog
+            open={detailsOpen}
+            onOpenChange={setDetailsOpen}
+            caseData={selectedCase}
+          />
+        )}
+
+        {/* Modal de crear/editar */}
         <CaseDialog open={dialogOpen} onOpenChange={setDialogOpen} caseData={selectedCase} onSuccess={fetchCases} />
 
+        {/* Alert de eliminar */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -1,82 +1,118 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Paleta elegante para estudio jurídico: marrón, beige, crema, blanco */
+
+  /* Fondo principal: crema claro #FDFBF7 */
+  --background: oklch(98.5% 0.01 80);
+
+  /* Texto principal: marrón oscuro #4A3C31 */
+  --foreground: oklch(25% 0.04 50);
+
+  /* Cards y popovers: blanco puro */
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(25% 0.04 50);
+
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(25% 0.04 50);
+
+  /* Primario: marrón chocolate #6B5A48 */
+  --primary: oklch(40% 0.05 45);
+  --primary-foreground: oklch(98% 0.01 80);
+
+  /* Secundario: beige claro #E8E1D6 */
+  --secondary: oklch(92% 0.02 80);
+  --secondary-foreground: oklch(25% 0.04 50);
+
+  /* Muted: marrón claro grisáceo #D1C4B2 */
+  --muted: oklch(80% 0.03 70);
+  --muted-foreground: oklch(50% 0.03 70);
+
+  /* Accent: marrón claro #A07E5F */
+  --accent: oklch(65% 0.08 50);
+  --accent-foreground: oklch(98% 0.01 80);
+
+  /* Destructive: rojo sobrio (para eliminar) */
+  --destructive: oklch(55% 0.2 30);
+  --destructive-foreground: oklch(98% 0.01 80);
+
+  /* Borders e inputs: #D1C4B2 */
+  --border: oklch(80% 0.03 70);
+  --input: oklch(80% 0.03 70);
+  --ring: oklch(40% 0.05 45);
+
+  /* Charts: tonos marrones y beige */
+  --chart-1: oklch(40% 0.05 45); /* marrón oscuro */
+  --chart-2: oklch(65% 0.08 50); /* marrón claro */
+  --chart-3: oklch(80% 0.03 70); /* beige */
+  --chart-4: oklch(55% 0.05 55); /* marrón medio */
+  --chart-5: oklch(90% 0.02 80); /* crema */
+
+  --radius: 0.5rem;
+
+  /* Sidebar: marrón chocolate #6B5A48 */
+  --sidebar: oklch(40% 0.05 45);
+  --sidebar-foreground: oklch(98% 0.01 80);
+  --sidebar-primary: oklch(65% 0.08 50);
+  --sidebar-primary-foreground: oklch(98% 0.01 80);
+  --sidebar-accent: oklch(80% 0.03 70);
+  --sidebar-accent-foreground: oklch(98% 0.01 80);
+  --sidebar-border: oklch(80% 0.03 70);
+  --sidebar-ring: oklch(40% 0.05 45);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Modo oscuro: más sobrio, con marrón oscuro y beige claro */
+  --background: oklch(25% 0.04 50); /* marrón oscuro */
+  --foreground: oklch(98% 0.01 80); /* beige claro */
+
+  --card: oklch(30% 0.04 55);
+  --card-foreground: oklch(98% 0.01 80);
+
+  --popover: oklch(28% 0.04 52);
+  --popover-foreground: oklch(98% 0.01 80);
+
+  --primary: oklch(65% 0.08 50); /* marrón claro */
+  --primary-foreground: oklch(25% 0.04 50);
+
+  --secondary: oklch(40% 0.05 45);
+  --secondary-foreground: oklch(98% 0.01 80);
+
+  --muted: oklch(45% 0.05 55);
+  --muted-foreground: oklch(80% 0.03 70);
+
+  --accent: oklch(65% 0.08 50);
+  --accent-foreground: oklch(25% 0.04 50);
+
+  --destructive: oklch(60% 0.2 30);
+  --destructive-foreground: oklch(98% 0.01 80);
+
+  --border: oklch(50% 0.05 55);
+  --input: oklch(50% 0.05 55);
+  --ring: oklch(65% 0.08 50);
+
+  --chart-1: oklch(65% 0.08 50);
+  --chart-2: oklch(40% 0.05 45);
+  --chart-3: oklch(80% 0.03 70);
+  --chart-4: oklch(55% 0.05 55);
+  --chart-5: oklch(90% 0.02 80);
+
+  --sidebar: oklch(30% 0.04 55);
+  --sidebar-foreground: oklch(98% 0.01 80);
+  --sidebar-primary: oklch(65% 0.08 50);
+  --sidebar-primary-foreground: oklch(25% 0.04 50);
+  --sidebar-accent: oklch(45% 0.05 55);
+  --sidebar-accent-foreground: oklch(98% 0.01 80);
+  --sidebar-border: oklch(50% 0.05 55);
+  --sidebar-ring: oklch(65% 0.08 50);
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

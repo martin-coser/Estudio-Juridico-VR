@@ -10,7 +10,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Estudio Jurídico - Gestión de Casos",
+  title: "Estudio Jurídico - Valentina Reineri",
   description: "Sistema de gestión para estudios jurídicos",
   generator: "v0.app",
   icons: {
@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`font-sans antialiased dark`}>
+      <body className={`font-sans antialiased`}>
         <AuthProvider>
           {children}
           <Toaster />
