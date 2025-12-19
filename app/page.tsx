@@ -24,12 +24,11 @@ export default function DashboardPage() {
       if (!user) return
 
       try {
-        // Count active cases
         const casesRef = collection(db, "cases")
         const casesSnap = await getDocs(query(casesRef))
         const casosActivos = casesSnap.size
 
-        // Count upcoming deadlines (cases with plazo in next 7 days)
+        // Vencimientos próximos (próximos 7 días)
         const today = new Date()
         const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
         const casesWithDeadlines = casesSnap.docs.filter((doc) => {
@@ -41,10 +40,12 @@ export default function DashboardPage() {
           return false
         })
 
-        // Count today's events
+        // Eventos de hoy
         const eventsRef = collection(db, "events")
         const todayStr = today.toISOString().split("T")[0]
-        const eventsSnap = await getDocs(query(eventsRef, where("fecha", "==", todayStr), orderBy("hora")))
+        const eventsSnap = await getDocs(
+          query(eventsRef, where("fecha", "==", todayStr), orderBy("hora"))
+        )
 
         setStats({
           casosActivos,
@@ -64,8 +65,8 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+        <div className="flex h-[70vh] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-t-4 border-b-4 border-primary"></div>
         </div>
       </AppLayout>
     )
@@ -73,59 +74,86 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-7xl">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Dashboard</h2>
-          <p className="text-muted-foreground mt-1">Resumen de actividades del estudio</p>
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Título y descripción */}
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+            Dashboard
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Resumen de actividades del estudio jurídico
+          </p>
         </div>
 
-        {/* Permanent alerts */}
-        <div className="grid gap-4">
+        {/* Alertas permanentes */}
+        <div className="grid gap-4 mb-8 sm:grid-cols-1 md:grid-cols-2">
           <Alert className="border-amber-500/50 bg-amber-500/10">
             <AlertCircle className="h-5 w-5 text-amber-500" />
             <AlertTitle className="text-amber-500">Recordatorio Importante</AlertTitle>
-            <AlertDescription className="text-foreground">Recordar verificar oficios</AlertDescription>
+            <AlertDescription className="text-foreground">
+              Recordar verificar oficios
+            </AlertDescription>
           </Alert>
 
           <Alert className="border-amber-500/50 bg-amber-500/10">
             <AlertCircle className="h-5 w-5 text-amber-500" />
             <AlertTitle className="text-amber-500">Recordatorio Importante</AlertTitle>
-            <AlertDescription className="text-foreground">Recordar controlar SAC</AlertDescription>
+            <AlertDescription className="text-foreground">
+              Recordar controlar SAC
+            </AlertDescription>
           </Alert>
         </div>
 
-        {/* Stats cards */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Casos Activos</CardTitle>
+        {/* Cards de estadísticas */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Casos Activos
+              </CardTitle>
               <Briefcase className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.casosActivos}</div>
-              <CardDescription className="mt-1">Total de casos en gestión</CardDescription>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">
+                {stats.casosActivos}
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Total de casos en gestión
+              </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Vencimientos Próximos Plazos</CardTitle>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Vencimientos Próximos
+              </CardTitle>
               <AlertCircle className="h-5 w-5 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.proximosVencimientos}</div>
-              <CardDescription className="mt-1">En los próximos 7 días</CardDescription>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">
+                {stats.proximosVencimientos}
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                En los próximos 7 días
+              </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Eventos Hoy</CardTitle>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Eventos Hoy
+              </CardTitle>
               <CalendarIcon className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.eventosHoy}</div>
-              <CardDescription className="mt-1">Reuniones y audiencias</CardDescription>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">
+                {stats.eventosHoy}
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Reuniones y audiencias
+              </p>
             </CardContent>
           </Card>
         </div>

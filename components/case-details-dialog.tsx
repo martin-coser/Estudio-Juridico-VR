@@ -1,9 +1,9 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Card, CardContent } from "@/components/ui/card"
-import type { Case } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import type { Case } from "@/lib/types"
 
 interface CaseDetailsDialogProps {
   open: boolean
@@ -16,101 +16,133 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-background border-border">
-        {/* Encabezado con fondo verde sutil */}
-        <DialogHeader className="border-b border-accent/20 pb-4">
-          <DialogTitle className="text-foreground text-2xl font-bold">
+      <DialogContent 
+        className="
+          max-w-[95vw] 
+          w-full 
+          max-h-[85vh]           /* Deja buen margen arriba y abajo */
+          overflow-y-auto 
+          p-5 sm:p-7 lg:p-8       /* Padding generoso en móvil */
+          bg-background 
+          border-border
+          rounded-xl
+        "
+      >
+        {/* Header espacioso */}
+        <DialogHeader className="pb-6">
+          <DialogTitle className="text-2xl sm:text-3xl font-bold text-foreground">
             Detalles del Caso
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground flex items-center gap-3 mt-2">
-            <Badge variant="outline" className="bg-accent/5 text-accent border-accent/30 px-3 py-1">
+          <DialogDescription className="mt-4 space-y-2">
+            <Badge variant="secondary" className="text-base px-4 py-1.5">
               {caseData.tipo}
             </Badge>
-            <span>Cliente: {caseData.clienteNombre || "Sin cliente"}</span>
+            <p className="text-base text-foreground font-medium">
+              Cliente: {caseData.clienteNombre || "Sin asignar"}
+            </p>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Sección común */}
-          <Card className="border-border shadow-sm">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Expediente</p>
-                  <p className="text-foreground">{caseData.expediente || "-"}</p>
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Nombre</p>
-                  <p className="text-foreground font-medium">{caseData.nombre || "-"}</p>
-                </div>
+        {/* Todo el contenido en un solo flujo continuo */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">  {/* Más espacio vertical entre filas */}
+          <DetailItem label="Expediente" value={caseData.expediente} highlight />
+          <DetailItem label="Nombre del Caso" value={caseData.nombre} bold large />
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Nombre del Caso</p>
-                  <p className="text-foreground">{caseData.nombreCaso || "-"}</p>
-                </div>
+          <DetailItem label="Nombre Descriptivo" value={caseData.nombreCaso} />
+          <DetailItem label="Tipo de Proceso" value={caseData.tipoProceso} />
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Tipo de Proceso</p>
-                  <p className="text-foreground">{caseData.tipoProceso || "-"}</p>
-                </div>
+          <DetailItem label="Dependencia" value={caseData.dependencia} />
+          <DetailItem label="Teléfono" value={caseData.telefono} />
 
-                <div className="col-span-2 space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Motivo</p>
-                  <p className="text-foreground whitespace-pre-wrap">{caseData.motivo || "-"}</p>
-                </div>
+          <DetailItem label="Estado">
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              {caseData.estado || "Sin especificar"}
+            </Badge>
+          </DetailItem>
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Dependencia</p>
-                  <p className="text-foreground">{caseData.dependencia || "-"}</p>
-                </div>
+          <DetailItem label="Plazo">
+            <span className={cn("font-semibold text-lg", caseData.plazo ? "text-foreground" : "text-muted-foreground")}>
+              {caseData.plazo || "Sin fecha"}
+            </span>
+          </DetailItem>
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
-                  <p className="text-foreground">{caseData.telefono || "-"}</p>
-                </div>
+          <DetailItem label="Estado de Pago">
+            <Badge 
+              variant={caseData.estadoPago === "Pagado" ? "default" : "destructive"}
+              className="text-sm px-3 py-1"
+            >
+              {caseData.estadoPago || "Pendiente"}
+            </Badge>
+          </DetailItem>
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Estado</p>
-                  <Badge variant="secondary" className="mt-1">
-                    {caseData.estado || "-"}
-                  </Badge>
-                </div>
+          {/* Motivo del Caso - integrado sin fondo especial */}
+          <DetailItem 
+            label="Motivo del Caso" 
+            value={caseData.motivo} 
+            multiline 
+            className="sm:col-span-2"  /* Ocupa toda la fila en desktop */
+          />
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Homologación/Sentencia</p>
-                  <p className="text-foreground whitespace-pre-wrap">{caseData.homologacionSentencia || "-"}</p>
-                </div>
+          {/* Homologación / Sentencia - integrado sin fondo */}
+          <DetailItem 
+            label="Homologación / Sentencia" 
+            value={caseData.homologacionSentencia} 
+            multiline 
+            className="sm:col-span-2"
+          />
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Plazo</p>
-                  <p className="text-foreground">{caseData.plazo || "-"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Estado de Pago</p>
-                  <Badge
-                    variant={caseData.estadoPago === "Pagado" ? "default" : "destructive"}
-                    className="mt-1"
-                  >
-                    {caseData.estadoPago || "-"}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Patología solo para SRT y ART */}
+          {/* Patología - solo si existe y es SRT/ART, integrado sin fondo especial */}
           {isSRTorART && (
-            <Card className="bg-accent/5 border-accent/30">
-              <CardContent className="pt-6">
-                <p className="text-sm font-medium text-muted-foreground mb-2">Patología</p>
-                <p className="text-foreground whitespace-pre-wrap">{caseData.patologia || "-"}</p>
-              </CardContent>
-            </Card>
+            <DetailItem 
+              label="Patología" 
+              value={caseData.patologia} 
+              multiline 
+              className="sm:col-span-2"
+            />
           )}
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/* DetailItem limpio y con más espacio */
+function DetailItem({
+  label,
+  value,
+  children,
+  bold = false,
+  large = false,
+  highlight = false,
+  multiline = false,
+  className = "",
+}: {
+  label: string
+  value?: string
+  children?: React.ReactNode
+  bold?: boolean
+  large?: boolean
+  highlight?: boolean
+  multiline?: boolean
+  className?: string
+}) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      {children ? (
+        children
+      ) : (
+        <p className={cn(
+          "text-foreground leading-relaxed",
+          bold && "font-bold",
+          large && "text-xl sm:text-2xl",
+          highlight && "font-semibold text-lg",
+          multiline && "whitespace-pre-wrap break-words",
+          !value && "text-muted-foreground italic"
+        )}>
+          {value || "No especificado"}
+        </p>
+      )}
+    </div>
   )
 }

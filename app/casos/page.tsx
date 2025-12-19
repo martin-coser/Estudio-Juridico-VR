@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { CaseDialog } from "@/components/case-dialog"
-import { CaseDetailsDialog } from "@/components/case-details-dialog" // Asegúrate de que la ruta sea correcta
-import { Plus, Search, Pencil, Trash2, Filter, Eye } from "lucide-react"
+import { CaseDetailsDialog } from "@/components/case-details-dialog"
+import { Plus, Search, Pencil, Trash2, Filter, Eye, Calendar, User, FileText, DollarSign } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, deleteDoc, doc, orderBy, query, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -33,11 +33,10 @@ export default function CasosPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedCase, setSelectedCase] = useState<Case | undefined>()
-  const [detailsOpen, setDetailsOpen] = useState(false) // Nuevo estado para el modal de detalles
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [filters, setFilters] = useState({
     search: "",
     tipo: "all",
-    estado: "all",
     estadoPago: "all",
   })
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -69,27 +68,20 @@ export default function CasosPage() {
   useEffect(() => {
     let filtered = cases
 
-    // Filter by search term
     if (filters.search) {
+      const term = filters.search.toLowerCase()
       filtered = filtered.filter(
         (c) =>
-          c.nombre.toLowerCase().includes(filters.search.toLowerCase()) ||
-          c.expediente?.toLowerCase().includes(filters.search.toLowerCase()) ||
-          c.clienteNombre?.toLowerCase().includes(filters.search.toLowerCase()),
+          c.nombre?.toLowerCase().includes(term) ||
+          c.expediente?.toLowerCase().includes(term) ||
+          c.clienteNombre?.toLowerCase().includes(term)
       )
     }
 
-    // Filter by type
     if (filters.tipo !== "all") {
       filtered = filtered.filter((c) => c.tipo === filters.tipo)
     }
 
-    // Filter by estado
-    if (filters.estado !== "all") {
-      filtered = filtered.filter((c) => c.estado?.toLowerCase().includes(filters.estado.toLowerCase()))
-    }
-
-    // Filter by payment status
     if (filters.estadoPago !== "all") {
       filtered = filtered.filter((c) => c.estadoPago === filters.estadoPago)
     }
@@ -107,18 +99,11 @@ export default function CasosPage() {
 
     try {
       await deleteDoc(doc(db, "cases", caseToDelete.id))
-      toast({
-        title: "Caso eliminado",
-        description: "El caso ha sido eliminado correctamente.",
-      })
+      toast({ title: "Caso eliminado", description: "El caso se eliminó correctamente." })
       fetchCases()
     } catch (error) {
       console.error("[v0] Error deleting case:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el caso.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "No se pudo eliminar el caso.", variant: "destructive" })
     } finally {
       setDeleteDialogOpen(false)
       setCaseToDelete(null)
@@ -127,29 +112,21 @@ export default function CasosPage() {
 
   const handlePaymentStatusChange = async (caseId: string, newStatus: "Pagado" | "Debe") => {
     try {
-      const caseRef = doc(db, "cases", caseId)
-      await updateDoc(caseRef, { estadoPago: newStatus })
-      toast({
-        title: "Estado actualizado",
-        description: "El estado de pago ha sido actualizado.",
-      })
+      await updateDoc(doc(db, "cases", caseId), { estadoPago: newStatus })
+      toast({ title: "Estado actualizado", description: "Estado de pago actualizado." })
       fetchCases()
     } catch (error) {
-      console.error("[v0] Error updating payment status:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado de pago.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "No se pudo actualizar.", variant: "destructive" })
     }
   }
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-[1400px]">
-        <div className="flex items-center justify-between">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-foreground">Casos</h2>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Casos</h1>
             <p className="text-muted-foreground mt-1">Gestión completa de casos jurídicos</p>
           </div>
           <Button
@@ -157,24 +134,26 @@ export default function CasosPage() {
               setSelectedCase(undefined)
               setDialogOpen(true)
             }}
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
+            size="lg"
+            className="bg-primary hover:bg-primary/90"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-5 w-5" />
             Nuevo Caso
           </Button>
         </div>
 
-        <Card>
+        {/* Filtros */}
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Lista de Casos</CardTitle>
-            <CardDescription>Total: {filteredCases.length} casos</CardDescription>
-
-            {/* Filters */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-4">
+            <CardTitle>Filtros</CardTitle>
+            <CardDescription>{filteredCases.length} caso{filteredCases.length !== 1 && "s"} encontrado{filteredCases.length !== 1 && "s"}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nombre, expediente..."
+                  placeholder="Buscar por nombre, expediente o cliente..."
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   className="pl-10"
@@ -195,10 +174,7 @@ export default function CasosPage() {
                 </SelectContent>
               </Select>
 
-              <Select
-                value={filters.estadoPago}
-                onValueChange={(value) => setFilters({ ...filters, estadoPago: value })}
-              >
+              <Select value={filters.estadoPago} onValueChange={(value) => setFilters({ ...filters, estadoPago: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Estado de pago" />
                 </SelectTrigger>
@@ -211,113 +187,175 @@ export default function CasosPage() {
 
               <Button
                 variant="outline"
-                onClick={() => setFilters({ search: "", tipo: "all", estado: "all", estadoPago: "all" })}
-                className="justify-start"
+                onClick={() => setFilters({ search: "", tipo: "all", estadoPago: "all" })}
               >
                 <Filter className="mr-2 h-4 w-4" />
-                Limpiar Filtros
+                Limpiar filtros
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
-              </div>
-            ) : filteredCases.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {filters.search || filters.tipo !== "all" || filters.estadoPago !== "all"
-                  ? "No se encontraron casos con los filtros aplicados"
-                  : "No hay casos registrados"}
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Expediente</TableHead>
-                      <TableHead>Caso</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Plazo</TableHead>
-                      <TableHead>Estado de Pago</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCases.map((caseData) => (
-                      <TableRow key={caseData.id}>
-                        <TableCell>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {caseData.tipo}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{caseData.expediente || "-"}</TableCell>
-                        <TableCell className="font-medium">{caseData.nombre}</TableCell>
-                        <TableCell>{caseData.clienteNombre || "-"}</TableCell>
-                        <TableCell>{caseData.estado || "-"}</TableCell>
-                        <TableCell>{formatDate(caseData.plazo)}</TableCell>
-                        <TableCell>
-                          <Select
-                            value={caseData.estadoPago}
-                            onValueChange={(value: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, value)}
-                          >
-                            <SelectTrigger className="w-[110px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Pagado">Pagado</SelectItem>
-                              <SelectItem value="Debe">Debe</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {/* Botón Ver Detalles (ojito) */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedCase(caseData)
-                                setDetailsOpen(true)
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-
-                            {/* Editar */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(caseData)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-
-                            {/* Eliminar */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setCaseToDelete(caseData)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        {/* Modal de detalles */}
+        {/* Lista de casos */}
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : filteredCases.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <p className="text-lg text-muted-foreground">
+                {Object.values(filters).some(f => f !== "" && f !== "all")
+                  ? "No se encontraron casos con los filtros aplicados"
+                  : "Aún no hay casos registrados"}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Vista móvil: Cards */}
+            <div className="grid gap-4 md:hidden">
+              {filteredCases.map((caseData) => (
+                <Card key={caseData.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <Badge variant="outline" className="mb-2">{caseData.tipo}</Badge>
+                        <h3 className="font-bold text-lg">{caseData.nombre}</h3>
+                        {caseData.expediente && <p className="text-sm text-muted-foreground">Exp: {caseData.expediente}</p>}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="truncate">{caseData.clienteNombre || "-"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="truncate">{caseData.estado || "-"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{formatDate(caseData.plazo)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <Select
+                          value={caseData.estadoPago}
+                          onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Pagado">Pagado</SelectItem>
+                            <SelectItem value="Debe">Debe</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedCase(caseData)
+                          setDetailsOpen(true)
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-1" /> Ver
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(caseData)}>
+                        <Pencil className="h-4 w-4 mr-1" /> Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setCaseToDelete(caseData)
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Vista desktop: Tabla */}
+            <div className="hidden md:block rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Expediente</TableHead>
+                    <TableHead>Caso</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Plazo</TableHead>
+                    <TableHead>Estado de Pago</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCases.map((caseData) => (
+                    <TableRow key={caseData.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Badge variant="outline">{caseData.tipo}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{caseData.expediente || "-"}</TableCell>
+                      <TableCell className="font-medium max-w-[200px] truncate">{caseData.nombre}</TableCell>
+                      <TableCell>{caseData.clienteNombre || "-"}</TableCell>
+                      <TableCell>{caseData.estado || "-"}</TableCell>
+                      <TableCell>{formatDate(caseData.plazo)}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={caseData.estadoPago}
+                          onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
+                        >
+                          <SelectTrigger className="w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Pagado">Pagado</SelectItem>
+                            <SelectItem value="Debe">Debe</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => { setSelectedCase(caseData); setDetailsOpen(true) }}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(caseData)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setCaseToDelete(caseData)
+                              setDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+
+        {/* Modales */}
         {selectedCase && (
           <CaseDetailsDialog
             open={detailsOpen}
@@ -326,22 +364,25 @@ export default function CasosPage() {
           />
         )}
 
-        {/* Modal de crear/editar */}
-        <CaseDialog open={dialogOpen} onOpenChange={setDialogOpen} caseData={selectedCase} onSuccess={fetchCases} />
+        <CaseDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          caseData={selectedCase}
+          onSuccess={fetchCases}
+        />
 
-        {/* Alert de eliminar */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogTitle>¿Eliminar caso?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta acción no se puede deshacer. El caso {caseToDelete?.nombre} será eliminado permanentemente.
+                Esta acción es permanente. El caso <strong>{caseToDelete?.nombre}</strong> se eliminará para siempre.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                Eliminar
+                Eliminar permanentemente
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

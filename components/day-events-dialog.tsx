@@ -28,15 +28,13 @@ export function DayEventsDialog({
   onDelete,
   onNewEvent,
 }: DayEventsDialogProps) {
-  // Función segura para formatear la fecha
   const getFormattedDate = () => {
     if (!date) return "Fecha no seleccionada"
 
-    const dateObj = parseISO(date) // parseISO es más seguro para YYYY-MM-DD
+    const dateObj = parseISO(date)
     if (isValid(dateObj)) {
       return format(dateObj, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })
     }
-
     return "Fecha inválida"
   }
 
@@ -44,71 +42,108 @@ export function DayEventsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="capitalize">{formattedDate}</DialogTitle>
-          <DialogDescription>
+      <DialogContent
+        className="
+          max-w-full 
+          w-[95vw] 
+          sm:max-w-lg 
+          max-h-[90vh] 
+          flex flex-col
+          p-0
+        "
+      >
+        {/* Header fijo */}
+        <DialogHeader className="p-6 pb-4 border-b border-border shrink-0">
+          <DialogTitle className="text-2xl font-bold capitalize">
+            {formattedDate}
+          </DialogTitle>
+          <DialogDescription className="text-base">
             {events.length === 0
               ? "No hay eventos programados"
               : `${events.length} evento${events.length > 1 ? "s" : ""} programado${events.length > 1 ? "s" : ""}`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        {/* Contenido con scroll */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {events.length > 0 ? (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-4">
               {events.map((event) => (
                 <div
                   key={event.id}
-                  className="border rounded-lg p-4 space-y-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h4 className="font-semibold">{event.titulo}</h4>
-                      {event.descripcion && <p className="text-sm text-muted-foreground mt-1">{event.descripcion}</p>}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-foreground text-lg truncate">
+                        {event.titulo}
+                      </h4>
+                      {event.descripcion && (
+                        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                          {event.descripcion}
+                        </p>
+                      )}
+                      
+                      {/* Badges de hora y cliente */}
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        <Badge variant="secondary" className="gap-1.5 text-xs px-2.5 py-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {event.hora}
+                        </Badge>
+                        {event.clienteNombre && (
+                          <Badge variant="outline" className="gap-1.5 text-xs px-2.5 py-1">
+                            <User className="h-3.5 w-3.5" />
+                            {event.clienteNombre}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(event)}>
-                        <Pencil className="h-4 w-4" />
+
+                    {/* Botones de acción - más grandes en móvil */}
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-lg"
+                        onClick={() => onEdit(event)}
+                      >
+                        <Pencil className="h-5 w-5" />
+                        <span className="sr-only">Editar</span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        className="h-10 w-10 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => onDelete(event)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
+                        <span className="sr-only">Eliminar</span>
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <Badge variant="outline" className="gap-1">
-                      <Clock className="h-3 w-3" />
-                      {event.hora}
-                    </Badge>
-                    {event.clienteNombre && (
-                      <Badge variant="outline" className="gap-1">
-                        <User className="h-3 w-3" />
-                        {event.clienteNombre}
-                      </Badge>
-                    )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Día libre 🎉
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Calendar className="h-16 w-16 text-muted-foreground/40 mb-4" />
+              <p className="text-lg text-muted-foreground">Día libre 🎉</p>
+              <p className="text-sm text-muted-foreground/70 mt-2">
+                No hay eventos programados para esta fecha
+              </p>
             </div>
           )}
+        </div>
 
-          <div className="flex justify-center pt-4 border-t">
-            <Button onClick={onNewEvent} className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo evento este día
-            </Button>
-          </div>
+        {/* Footer con botón nuevo evento - siempre visible */}
+        <div className="border-t border-border p-6 shrink-0">
+          <Button
+            onClick={onNewEvent}
+            className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Nuevo evento este día
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

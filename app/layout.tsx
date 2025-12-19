@@ -1,4 +1,3 @@
-import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -6,8 +5,17 @@ import { AuthProvider } from "@/hooks/use-auth"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+})
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Estudio Jurídico - Valentina Reineri",
@@ -34,14 +42,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="es">
-      <body className={`font-sans antialiased`}>
+    <html lang="es" className="h-full">
+      <body
+        className={`
+          min-h-screen bg-background font-sans antialiased
+          ${geistSans.variable} ${geistMono.variable}
+        `}
+      >
         <AuthProvider>
-          {children}
+          <div className="flex flex-col min-h-screen">
+            {children}
+          </div>
           <Toaster />
         </AuthProvider>
         <Analytics />
