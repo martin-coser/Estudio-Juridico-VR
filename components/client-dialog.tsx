@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +28,27 @@ export function ClientDialog({ open, onOpenChange, client, onSuccess }: ClientDi
     dni_cuit: client?.dni_cuit || "",
   })
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (open) {
+      if (client) {
+        setFormData({
+          nombre: client.nombre || "",
+          telefono: client.telefono || "",
+          email: client.email || "",
+          dni_cuit: client.dni_cuit || "",
+        })
+      } else {
+        // Si es un nuevo cliente, reseteamos el formulario
+        setFormData({
+          nombre: "",
+          telefono: "",
+          email: "",
+          dni_cuit: "",
+        })
+      }
+    }
+  }, [open, client])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
