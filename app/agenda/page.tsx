@@ -89,7 +89,7 @@ export default function AgendaPage() {
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay() // 0 = Domingo
+    const startingDayOfWeek = firstDay.getDay()
 
     return { daysInMonth, startingDayOfWeek, year, month }
   }
@@ -101,10 +101,12 @@ export default function AgendaPage() {
 
   const getEventsForDate = (date: string) => events.filter((e) => e.fecha === date)
 
-  const upcomingEvents = events.filter((e) => {
-    const today = new Date().toISOString().split("T")[0]
-    return e.fecha >= today
-  }).slice(0, 20) // Limitamos para no saturar en móvil
+  const upcomingEvents = events
+    .filter((e) => {
+      const today = new Date().toISOString().split("T")[0]
+      return e.fecha >= today
+    })
+    .slice(0, 20)
 
   const isToday = (dateStr: string) => dateStr === new Date().toISOString().split("T")[0]
 
@@ -113,7 +115,7 @@ export default function AgendaPage() {
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
   ]
 
-  const weekDays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+  const weekDays = ["D", "L", "M", "X", "J", "V", "S"]  // Ultra abreviado
 
   return (
     <AppLayout>
@@ -138,226 +140,225 @@ export default function AgendaPage() {
           </Button>
         </div>
 
-        {/* Calendario siempre arriba en móvil */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl">{monthNames[month]} {year}</CardTitle>
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon" onClick={previousMonth}>
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={nextMonth}>
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
+        {/* Layout responsive */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Calendario ultra compacto */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-2 pt-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{monthNames[month]} {year}</CardTitle>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={previousMonth}>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth}>
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {/* Días de la semana */}
-                {weekDays.map((day) => (
-                  <div key={day} className="py-3 text-sm font-semibold text-muted-foreground">
-                    {day}
-                  </div>
-                ))}
+            </CardHeader>
+            <CardContent className="pt-0 pb-4">
+              {loading ? (
+                <div className="flex justify-center py-6">
+                  <div className="h-8 w-8 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-7 gap-0.5 text-center">
+                  {/* Días de la semana ultra pequeños */}
+                  {weekDays.map((day) => (
+                    <div key={day} className="py-1 text-xs font-semibold text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
 
-                {/* Espacios vacíos al inicio */}
-                {Array.from({ length: startingDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} className="aspect-square" />
-                ))}
+                  {/* Espacios vacíos */}
+                  {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                    <div key={`empty-${i}`} className="aspect-square" />
+                  ))}
 
-                {/* Días del mes */}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const day = i + 1
-                  const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-                  const dayEvents = getEventsForDate(dateStr)
-                  const today = isToday(dateStr)
+                  {/* Días del mes - minimalistas */}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1
+                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+                    const dayEvents = getEventsForDate(dateStr)
+                    const today = isToday(dateStr)
 
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => {
-                        setSelectedDayEvents(dayEvents)
-                        setSelectedDate(dateStr)
-                        setDayEventsOpen(true)
-                      }}
-                      className={cn(
-                        "aspect-square rounded-xl p-2 flex flex-col items-center justify-center transition-all",
-                        "hover:bg-accent/20",
-                        today && "bg-primary/10 ring-2 ring-primary font-bold",
-                        dayEvents.length > 0 && "bg-accent/10"
-                      )}
-                    >
-                      <span className={cn("text-lg font-medium", today && "text-primary")}>
-                        {day}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1 justify-center">
-                          {dayEvents.slice(0, 3).map((_, idx) => (
-                            <div key={idx} className="h-1.5 w-1.5 rounded-full bg-primary" />
-                          ))}
-                          {dayEvents.length > 3 && (
-                            <span className="text-xs text-muted-foreground">+{dayEvents.length - 3}</span>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Próximos eventos - debajo en móvil, al lado en lg+ */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Próximos Eventos</CardTitle>
-            <CardDescription>
-              {upcomingEvents.length} evento{upcomingEvents.length !== 1 && "s"} programado{upcomingEvents.length !== 1 && "s"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              </div>
-            ) : upcomingEvents.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-lg">
-                No hay eventos próximos
-              </div>
-            ) : (
-              <div className="max-h-96 overflow-y-auto">
-                <div className="divide-y divide-border">
-                  {upcomingEvents.map((event) => {
-                    const today = isToday(event.fecha)
                     return (
-                      <div
-                        key={event.id}
+                      <button
+                        key={day}
+                        onClick={() => {
+                          setSelectedDayEvents(dayEvents)
+                          setSelectedDate(dateStr)
+                          setDayEventsOpen(true)
+                        }}
                         className={cn(
-                          "p-4 hover:bg-accent/5 transition-colors",
-                          today && "bg-primary/5"
+                          "aspect-square rounded-md flex flex-col items-center justify-center text-xs transition-all hover:bg-accent/20",
+                          today && "bg-primary/10 ring-1 ring-primary font-bold",
+                          dayEvents.length > 0 && "bg-accent/10"
                         )}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className={cn("font-semibold truncate", today && "text-primary")}>
-                              {event.titulo}
-                            </h4>
-                            {event.descripcion && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {event.descripcion}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap gap-2 mt-3 text-sm">
-                              <Badge variant="secondary" className="gap-1 text-xs">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(event.fecha)}
-                              </Badge>
-                              <Badge variant="secondary" className="gap-1 text-xs">
-                                <Clock className="h-3 w-3" />
-                                {event.hora}
-                              </Badge>
-                              {event.clienteNombre && (
-                                <Badge variant="outline" className="gap-1 text-xs truncate max-w-[120px]">
-                                  <User className="h-3 w-3" />
-                                  {event.clienteNombre}
-                                </Badge>
-                              )}
-                            </div>
-                            {today && (
-                              <Badge className="mt-2" variant="default">
-                                Hoy
-                              </Badge>
-                            )}
+                        <span className={cn("text-xs", today && "text-primary")}>
+                          {day}
+                        </span>
+                        {dayEvents.length > 0 && (
+                          <div className="mt-0.5 flex gap-0.5">
+                            {dayEvents.slice(0, 3).map((_, idx) => (
+                              <div key={idx} className="h-0.5 w-0.5 rounded-full bg-primary/80" />
+                            ))}
                           </div>
-
-                          <div className="flex gap-1 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9"
-                              onClick={() => handleEdit(event)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9"
-                              onClick={() => {
-                                setEventToDelete(event)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                        )}
+                      </button>
                     )
                   })}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Próximos eventos */}
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle className="text-xl">Próximos Eventos</CardTitle>
+              <CardDescription>
+                {upcomingEvents.length} evento{upcomingEvents.length !== 1 && "s"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+              ) : upcomingEvents.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-lg">
+                  No hay eventos próximos
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  <div className="divide-y divide-border">
+                    {upcomingEvents.map((event) => {
+                      const today = isToday(event.fecha)
+                      return (
+                        <div
+                          key={event.id}
+                          className={cn(
+                            "p-4 hover:bg-accent/5 transition-colors",
+                            today && "bg-primary/5"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className={cn("font-semibold truncate", today && "text-primary")}>
+                                {event.titulo}
+                              </h4>
+                              {event.descripcion && (
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                  {event.descripcion}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-2 mt-3 text-sm">
+                                <Badge variant="secondary" className="gap-1 text-xs">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDate(event.fecha)}
+                                </Badge>
+                                <Badge variant="secondary" className="gap-1 text-xs">
+                                  <Clock className="h-3 w-3" />
+                                  {event.hora}
+                                </Badge>
+                                {event.clienteNombre && (
+                                  <Badge variant="outline" className="gap-1 text-xs truncate max-w-[120px]">
+                                    <User className="h-3 w-3" />
+                                    {event.clienteNombre}
+                                  </Badge>
+                                )}
+                              </div>
+                              {today && (
+                                <Badge className="mt-2" variant="default">
+                                  Hoy
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => handleEdit(event)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => {
+                                  setEventToDelete(event)
+                                  setDeleteDialogOpen(true)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Modales (igual que antes) */}
+        <DayEventsDialog
+          open={dayEventsOpen}
+          onOpenChange={setDayEventsOpen}
+          date={selectedDate}
+          events={selectedDayEvents}
+          onEdit={(event) => {
+            setSelectedEvent(event)
+            setDialogOpen(true)
+            setDayEventsOpen(false)
+          }}
+          onDelete={(event) => {
+            setEventToDelete(event)
+            setDeleteDialogOpen(true)
+            setDayEventsOpen(false)
+          }}
+          onNewEvent={() => {
+            setSelectedEvent(undefined)
+            setSelectedDate(selectedDate)
+            setDialogOpen(true)
+            setDayEventsOpen(false)
+          }}
+        />
+
+        <EventDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          event={selectedEvent}
+          defaultDate={selectedDate}
+          onSuccess={fetchEvents}
+        />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar evento?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción es permanente. El evento <strong>{eventToDelete?.titulo}</strong> se eliminará.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      {/* Modales */}
-      <DayEventsDialog
-        open={dayEventsOpen}
-        onOpenChange={setDayEventsOpen}
-        date={selectedDate}
-        events={selectedDayEvents}
-        onEdit={(event) => {
-          setSelectedEvent(event)
-          setDialogOpen(true)
-          setDayEventsOpen(false)
-        }}
-        onDelete={(event) => {
-          setEventToDelete(event)
-          setDeleteDialogOpen(true)
-          setDayEventsOpen(false)
-        }}
-        onNewEvent={() => {
-          setSelectedEvent(undefined)
-          setSelectedDate(selectedDate)
-          setDialogOpen(true)
-          setDayEventsOpen(false)
-        }}
-      />
-
-      <EventDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        event={selectedEvent}
-        defaultDate={selectedDate}
-        onSuccess={fetchEvents}
-      />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar evento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción es permanente. El evento <strong>{eventToDelete?.titulo}</strong> se eliminará.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </AppLayout>
   )
 }
