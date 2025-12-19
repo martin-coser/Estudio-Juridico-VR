@@ -79,14 +79,19 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
     setLoading(true)
 
     try {
-      const selectedClient = clients.find((c) => c.id === formData.clienteId)
+      let clienteNombre = null // o "" si preferís cadena vacía
+
+      if (formData.clienteId && formData.clienteId !== "none") {
+        const selectedClient = clients.find((c) => c.id === formData.clienteId)
+        clienteNombre = selectedClient?.nombre || null
+      }
 
       if (event) {
         // Update existing event
         const eventRef = doc(db, "events", event.id)
         await updateDoc(eventRef, {
           ...formData,
-          clienteNombre: selectedClient?.nombre,
+          clienteNombre,
         })
         toast({
           title: "Evento actualizado",
@@ -96,7 +101,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
         // Create new event
         await addDoc(collection(db, "events"), {
           ...formData,
-          clienteNombre: selectedClient?.nombre,
+          clienteNombre,
           createdAt: Date.now(),
         })
         toast({

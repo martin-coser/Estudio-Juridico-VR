@@ -24,7 +24,7 @@ export function AppSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-border px-6">
         <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Scale className="w-6 h-6 text-slate-900" />
+          <Scale className="w-6 h-6 text-gray-100" />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-bold text-foreground truncate">Estudio Jurídico</h2>

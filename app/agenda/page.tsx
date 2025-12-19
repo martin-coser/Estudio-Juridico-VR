@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { EventDialog } from "@/components/event-dialog"
+import { DayEventsDialog } from "@/components/day-events-dialog" // ← NUEVO
 import { Calendar, Plus, Clock, User, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore"
@@ -22,6 +23,7 @@ import { db } from "@/lib/firebase"
 import type { Event } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/formatDate"
 
 export default function AgendaPage() {
   const [events, setEvents] = useState<Event[]>([])
@@ -32,6 +34,11 @@ export default function AgendaPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
+
+  // NUEVOS estados para el modal de eventos del día
+  const [dayEventsOpen, setDayEventsOpen] = useState(false)
+  const [selectedDayEvents, setSelectedDayEvents] = useState<Event[]>([])
+
   const { toast } = useToast()
 
   const fetchEvents = async () => {
@@ -120,18 +127,8 @@ export default function AgendaPage() {
   }
 
   const monthNames = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
   ]
 
   return (
@@ -156,13 +153,11 @@ export default function AgendaPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Calendar (sin cambios, tamaño original) */}
+          {/* Calendario */}
           <Card className="lg:col-span-2">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>
-                  {monthNames[month]} {year}
-                </CardTitle>
+                <CardTitle>{monthNames[month]} {year}</CardTitle>
                 <div className="flex gap-2">
                   <Button variant="outline" size="icon" onClick={previousMonth}>
                     <ChevronLeft className="h-4 w-4" />
@@ -200,8 +195,9 @@ export default function AgendaPage() {
                       <button
                         key={day}
                         onClick={() => {
+                          setSelectedDayEvents(dayEvents)
                           setSelectedDate(dateStr)
-                          setDialogOpen(true)
+                          setDayEventsOpen(true)
                         }}
                         className={cn(
                           "p-2 rounded-lg text-center transition-colors hover:bg-accent/20 relative min-h-[60px] flex flex-col items-start justify-start",
@@ -229,7 +225,7 @@ export default function AgendaPage() {
             </CardContent>
           </Card>
 
-          {/* Próximos eventos con scroll vertical fijo */}
+          {/* Próximos eventos */}
           <Card className="h-full">
             <CardHeader>
               <CardTitle>Próximos Eventos</CardTitle>
@@ -243,7 +239,7 @@ export default function AgendaPage() {
               ) : upcomingEvents.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">No hay eventos próximos</div>
               ) : (
-                <div className="h-[500px] overflow-y-auto"> {/* Scroll vertical fijo */}
+                <div className="h-[500px] overflow-y-auto">
                   <div className="space-y-3 px-6 pb-6">
                     {upcomingEvents.map((event) => {
                       const isTodayEvent = isToday(event.fecha)
@@ -282,7 +278,7 @@ export default function AgendaPage() {
                           <div className="flex flex-wrap gap-2 text-xs">
                             <Badge variant="outline" className="gap-1">
                               <Calendar className="h-3 w-3" />
-                              {event.fecha}
+                              {formatDate(event.fecha)}
                             </Badge>
                             <Badge variant="outline" className="gap-1">
                               <Clock className="h-3 w-3" />
@@ -311,7 +307,30 @@ export default function AgendaPage() {
           </Card>
         </div>
 
-        {/* Modal de evento */}
+        {/* Modal para ver eventos del día seleccionado */}
+        <DayEventsDialog
+          open={dayEventsOpen}
+          onOpenChange={setDayEventsOpen}
+          date={selectedDate}
+          events={selectedDayEvents}
+          onEdit={(event) => {
+            setSelectedEvent(event)
+            setDialogOpen(true)
+            setDayEventsOpen(false)
+          }}
+          onDelete={(event) => {
+            setEventToDelete(event)
+            setDeleteDialogOpen(true)
+            setDayEventsOpen(false)
+          }}
+          onNewEvent={() => {
+            setSelectedEvent(undefined)
+            setDialogOpen(true)
+            setDayEventsOpen(false)
+          }}
+        />
+
+        {/* Modal para crear/editar evento */}
         <EventDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
@@ -320,6 +339,7 @@ export default function AgendaPage() {
           onSuccess={fetchEvents}
         />
 
+        {/* Confirmación de eliminación */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

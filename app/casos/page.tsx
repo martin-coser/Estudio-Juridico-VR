@@ -25,6 +25,7 @@ import { collection, getDocs, deleteDoc, doc, orderBy, query, updateDoc } from "
 import { db } from "@/lib/firebase"
 import type { Case } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import { formatDate } from "@/lib/formatDate"
 
 export default function CasosPage() {
   const [cases, setCases] = useState<Case[]>([])
@@ -256,7 +257,7 @@ export default function CasosPage() {
                         <TableCell className="font-medium">{caseData.nombre}</TableCell>
                         <TableCell>{caseData.clienteNombre || "-"}</TableCell>
                         <TableCell>{caseData.estado || "-"}</TableCell>
-                        <TableCell>{caseData.plazo || "-"}</TableCell>
+                        <TableCell>{formatDate(caseData.plazo)}</TableCell>
                         <TableCell>
                           <Select
                             value={caseData.estadoPago}
