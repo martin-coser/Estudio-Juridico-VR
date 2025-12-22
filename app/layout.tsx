@@ -47,14 +47,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className="h-full">
-      <body
-        className={`
-          min-h-screen bg-background font-sans antialiased
-          ${geistSans.variable} ${geistMono.variable}
-        `}
-      >
+      <body className={`
+        h-full bg-background font-sans antialiased
+        ${geistSans.variable} ${geistMono.variable}
+      `}>
         <AuthProvider>
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col h-full">
             {children}
           </div>
           <Toaster />

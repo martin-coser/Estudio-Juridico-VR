@@ -5,10 +5,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Briefcase, CalendarIcon } from "lucide-react"
 import { useEffect, useState } from "react"
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore"
+import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
-import type { Case } from "@/lib/types"
+import type { Case, Event } from "@/lib/types"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -21,39 +21,58 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user) return
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
       try {
-        const casesRef = collection(db, "cases")
-        const casesSnap = await getDocs(query(casesRef))
-        const casosActivos = casesSnap.size
+        let casosActivos = 0
+        let proximosVencimientos = 0
+        let eventosHoy = 0
 
-        // Vencimientos próximos (próximos 7 días)
+        // === 1. CARGAR CASOS (para casos activos y vencimientos) ===
+        const casesQuery = query(collection(db, "cases"))
+        const casesSnap = await getDocs(casesQuery)
+        casosActivos = casesSnap.size
+
         const today = new Date()
+        today.setHours(0, 0, 0, 0)
         const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-        const casesWithDeadlines = casesSnap.docs.filter((doc) => {
-          const caseData = doc.data() as Case
-          if (caseData.plazo) {
-            const plazoDate = new Date(caseData.plazo)
-            return plazoDate >= today && plazoDate <= nextWeek
+        nextWeek.setHours(23, 59, 59, 999)
+
+        casesSnap.forEach((doc) => {
+          const caso = doc.data() as Case
+
+          // Contar plazos próximos (múltiples por caso)
+          if (caso.plazos && caso.plazos.length > 0) {
+            caso.plazos.forEach((plazo) => {
+              if (!plazo.fecha) return
+              const fechaPlazo = new Date(plazo.fecha)
+              if (fechaPlazo >= today && fechaPlazo <= nextWeek) {
+                proximosVencimientos++
+              }
+            })
           }
-          return false
         })
 
-        // Eventos de hoy
-        const eventsRef = collection(db, "events")
-        const todayStr = today.toISOString().split("T")[0]
-        const eventsSnap = await getDocs(
-          query(eventsRef, where("fecha", "==", todayStr), orderBy("hora"))
+        // === 2. CARGAR EVENTOS DE HOY ===
+        const todayStr = today.toISOString().split("T")[0] // formato YYYY-MM-DD
+
+        const eventsQuery = query(
+          collection(db, "events"),
+          where("fecha", "==", todayStr)
         )
+        const eventsSnap = await getDocs(eventsQuery)
+        eventosHoy = eventsSnap.size
 
         setStats({
           casosActivos,
-          proximosVencimientos: casesWithDeadlines.length,
-          eventosHoy: eventsSnap.size,
+          proximosVencimientos,
+          eventosHoy,
         })
       } catch (error) {
-        console.error("[v0] Error fetching stats:", error)
+        console.error("[v0] Error fetching dashboard stats:", error)
       } finally {
         setLoading(false)
       }
@@ -135,7 +154,7 @@ export default function DashboardPage() {
                 {stats.proximosVencimientos}
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                En los próximos 7 días
+                Plazos en los próximos 7 días
               </p>
             </CardContent>
           </Card>
@@ -152,7 +171,7 @@ export default function DashboardPage() {
                 {stats.eventosHoy}
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                Reuniones y audiencias
+                Reuniones y audiencias programadas
               </p>
             </CardContent>
           </Card>

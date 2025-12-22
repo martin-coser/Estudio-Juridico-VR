@@ -19,13 +19,41 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { CaseDialog } from "@/components/case-dialog"
 import { CaseDetailsDialog } from "@/components/case-details-dialog"
-import { Plus, Search, Pencil, Trash2, Filter, Eye, Calendar, User, FileText, DollarSign } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, Filter, Eye, Calendar, User, FileText, DollarSign, AlertCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, deleteDoc, doc, orderBy, query, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Case } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { formatDate } from "@/lib/formatDate"
+import { cn } from "@/lib/utils"
+
+// Fecha actual real del sistema
+const today = new Date()
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return "-"
+  const date = new Date(dateString)
+  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+// Función para obtener el plazo más próximo (o vencido)
+const getNextOrOverdueDeadline = (plazos: Case["plazos"] = []) => {
+  if (!plazos || plazos.length === 0) return null
+
+  const futureOrToday = plazos
+    .filter(p => p.fecha && new Date(p.fecha) >= today)
+    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+
+  const overdue = plazos
+    .filter(p => p.fecha && new Date(p.fecha) < today)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()) 
+
+  return futureOrToday[0] || overdue[0] || null
+}
+
+const hasOverdueDeadline = (plazos: Case["plazos"] = []) => {
+  return plazos.some(p => p.fecha && new Date(p.fecha) < today)
+}
 
 export default function CasosPage() {
   const [cases, setCases] = useState<Case[]>([])
@@ -215,76 +243,86 @@ export default function CasosPage() {
           <>
             {/* Vista móvil: Cards */}
             <div className="grid gap-4 md:hidden">
-              {filteredCases.map((caseData) => (
-                <Card key={caseData.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <Badge variant="outline" className="mb-2">{caseData.tipo}</Badge>
-                        <h3 className="font-bold text-lg">{caseData.nombre}</h3>
-                        {caseData.expediente && <p className="text-sm text-muted-foreground">Exp: {caseData.expediente}</p>}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate">{caseData.clienteNombre || "-"}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate">{caseData.estado || "-"}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{formatDate(caseData.plazo)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <Select
-                          value={caseData.estadoPago}
-                          onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Pagado">Pagado</SelectItem>
-                            <SelectItem value="Debe">Debe</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+              {filteredCases.map((caseData) => {
+                const nextDeadline = getNextOrOverdueDeadline(caseData.plazos)
+                const isOverdue = hasOverdueDeadline(caseData.plazos)
 
-                    <div className="flex justify-end gap-2 pt-3 border-t">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedCase(caseData)
-                          setDetailsOpen(true)
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-1" /> Ver
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(caseData)}>
-                        <Pencil className="h-4 w-4 mr-1" /> Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setCaseToDelete(caseData)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                return (
+                  <Card key={caseData.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <Badge variant="outline" className="mb-2">{caseData.tipo}</Badge>
+                          <h3 className="font-bold text-lg">{caseData.nombre}</h3>
+                          {caseData.expediente && <p className="text-sm text-muted-foreground">Exp: {caseData.expediente}</p>}
+                        </div>
+                        {isOverdue && (
+                          <span className="flex items-center" aria-label="Tiene plazos vencidos" title="Tiene plazos vencidos">
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                          </span>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate">{caseData.clienteNombre || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate">{caseData.estado || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 col-span-2">
+                          <Calendar className={cn("h-4 w-4", isOverdue ? "text-destructive" : "text-muted-foreground")} />
+                          <div>
+                            <p className={cn("font-medium", isOverdue && "text-destructive")}>
+                              {nextDeadline ? `${nextDeadline.nombre}: ${formatDate(nextDeadline.fecha)}` : "Sin plazos"}
+                            </p>
+                            {caseData.plazos && caseData.plazos.length > 1 && (
+                              <p className="text-xs text-muted-foreground">+{caseData.plazos.length - 1} más</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <Select
+                            value={caseData.estadoPago}
+                            onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pagado">Pagado</SelectItem>
+                              <SelectItem value="Debe">Debe</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-3 border-t">
+                        <Button size="sm" variant="outline" onClick={() => { setSelectedCase(caseData); setDetailsOpen(true) }}>
+                          <Eye className="h-4 w-4 mr-1" /> Ver
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(caseData)}>
+                          <Pencil className="h-4 w-4 mr-1" /> Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setCaseToDelete(caseData)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
 
             {/* Vista desktop: Tabla */}
@@ -297,58 +335,78 @@ export default function CasosPage() {
                     <TableHead>Caso</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Plazo</TableHead>
+                    <TableHead>Próximo Plazo</TableHead>
                     <TableHead>Estado de Pago</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCases.map((caseData) => (
-                    <TableRow key={caseData.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <Badge variant="outline">{caseData.tipo}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{caseData.expediente || "-"}</TableCell>
-                      <TableCell className="font-medium max-w-[200px] truncate">{caseData.nombre}</TableCell>
-                      <TableCell>{caseData.clienteNombre || "-"}</TableCell>
-                      <TableCell>{caseData.estado || "-"}</TableCell>
-                      <TableCell>{formatDate(caseData.plazo)}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={caseData.estadoPago}
-                          onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
-                        >
-                          <SelectTrigger className="w-28">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Pagado">Pagado</SelectItem>
-                            <SelectItem value="Debe">Debe</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => { setSelectedCase(caseData); setDetailsOpen(true) }}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(caseData)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setCaseToDelete(caseData)
-                              setDeleteDialogOpen(true)
-                            }}
+                  {filteredCases.map((caseData) => {
+                    const nextDeadline = getNextOrOverdueDeadline(caseData.plazos)
+                    const isOverdue = hasOverdueDeadline(caseData.plazos)
+                    const totalDeadlines = caseData.plazos?.length || 0
+
+                    return (
+                      <TableRow key={caseData.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <Badge variant="outline">{caseData.tipo}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{caseData.expediente || "-"}</TableCell>
+                        <TableCell className="font-medium max-w-[200px] truncate">{caseData.nombre}</TableCell>
+                        <TableCell>{caseData.clienteNombre || "-"}</TableCell>
+                        <TableCell>{caseData.estado || "-"}</TableCell>
+                        <TableCell>
+                          {nextDeadline ? (
+                            <div className="space-y-1">
+                              <p className={cn("font-medium", isOverdue && "text-destructive")}>
+                                {nextDeadline.nombre}
+                              </p>
+                              <p className={cn("text-sm", isOverdue && "text-destructive")}>
+                                {formatDate(nextDeadline.fecha)}
+                                {totalDeadlines > 1 && ` (+${totalDeadlines - 1} más)`}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">Sin plazos</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={caseData.estadoPago}
+                            onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            <SelectTrigger className="w-28">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pagado">Pagado</SelectItem>
+                              <SelectItem value="Debe">Debe</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => { setSelectedCase(caseData); setDetailsOpen(true) }}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(caseData)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setCaseToDelete(caseData)
+                                setDeleteDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

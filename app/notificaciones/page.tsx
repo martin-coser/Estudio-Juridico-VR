@@ -1,195 +1,271 @@
 "use client"
 
 import { AppLayout } from "@/components/app-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Bell, CheckCircle2, AlertCircle, Calendar, Clock, User } from "lucide-react"
-import { useState } from "react"
+import { Bell, Calendar, DollarSign } from "lucide-react"
+import { useEffect, useState } from "react"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import type { Case, Event } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/formatDate"
 
-// Mock notifications (en producción vendrán de Firebase)
-const mockNotifications = [
-  {
-    id: "1",
-    tipo: "plazo",
-    titulo: "Vencimiento Próximo",
-    mensaje: "El caso Exp. 12345 tiene vencimiento en 3 días",
-    leida: false,
-    fecha: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    tipo: "evento",
-    titulo: "Audiencia Mañana",
-    mensaje: "Audiencia con el cliente Juan Pérez a las 10:00 AM",
-    leida: false,
-    fecha: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    tipo: "deudor",
-    titulo: "Cliente con Deuda",
-    mensaje: "El cliente María González tiene pagos pendientes",
-    leida: true,
-    fecha: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "4",
-    tipo: "evento",
-    titulo: "Reunión con Cliente",
-    mensaje: "Reunión programada con Ana López",
-    leida: true,
-    fecha: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
+interface Notification {
+  id: string
+  tipo: "plazo" | "evento" | "deudor"
+  titulo: string
+  mensaje: string
+  fecha: string
+  fechaVencimiento: string
+  prioridad?: "critica" | "normal"
+}
 
 export default function NotificacionesPage() {
-  const [notifications, setNotifications] = useState(mockNotifications)
+  const [plazosYEventos, setPlazosYEventos] = useState<Notification[]>([])
+  const [deudas, setDeudas] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((notif) => (notif.id === id ? { ...notif, leida: true } : notif))
-    )
-  }
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const alertasIzquierda: Notification[] = []
+        const alertasDerecha: Notification[] = []
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notif) => ({ ...notif, leida: true })))
-  }
+        const hoy = new Date()
+        hoy.setHours(0, 0, 0, 0)
 
-  const unreadCount = notifications.filter((n) => !n.leida).length
+        // 1. PLAZOS PRÓXIMOS
+        const casesSnap = await getDocs(collection(db, "cases"))
 
-  const getIcon = (tipo: string) => {
-    switch (tipo) {
-      case "plazo":
-        return <Calendar className="h-5 w-5" />
-      case "evento":
-        return <Clock className="h-5 w-5" />
-      case "deudor":
-        return <User className="h-5 w-5" />
-      default:
-        return <AlertCircle className="h-5 w-5" />
+        casesSnap.forEach((doc) => {
+          const caso = doc.data() as Case
+          if (!caso.plazos || caso.plazos.length === 0) return
+
+          caso.plazos.forEach((plazo) => {
+            if (!plazo.fecha) return
+
+            const fechaPlazo = new Date(plazo.fecha)
+            const diferenciaDias = Math.floor((fechaPlazo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+
+            if (diferenciaDias <= 2 && diferenciaDias >= 0) {
+              alertasIzquierda.push({
+                id: `plazo-${doc.id}-${plazo.id}`,
+                tipo: "plazo",
+                titulo: diferenciaDias === 0 ? "Vencimiento HOY" : `Vencimiento en ${diferenciaDias} día${diferenciaDias > 1 ? "s" : ""}`,
+                mensaje: `Caso: ${caso.nombre}\nPlazo: ${plazo.nombre}\n${plazo.descripcion ? plazo.descripcion + "\n" : ""}Fecha: ${formatDate(plazo.fecha)}`,
+                fecha: new Date().toISOString(),
+                fechaVencimiento: plazo.fecha,
+                prioridad: diferenciaDias === 0 ? "critica" : "normal",
+              })
+            }
+          })
+        })
+
+        // 2. EVENTOS PRÓXIMOS
+        const eventsSnap = await getDocs(collection(db, "events"))
+
+        eventsSnap.forEach((doc) => {
+          const evento = doc.data() as Event
+          if (!evento.fecha) return
+
+          const fechaEvento = new Date(evento.fecha)
+          const diferenciaDias = Math.floor((fechaEvento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+
+          if (diferenciaDias <= 2 && diferenciaDias >= 0) {
+            alertasIzquierda.push({
+              id: `evento-${doc.id}`,
+              tipo: "evento",
+              titulo: diferenciaDias === 0 ? "Evento HOY" : `Evento en ${diferenciaDias} día${diferenciaDias > 1 ? "s" : ""}`,
+              mensaje: `${evento.titulo}\n${evento.hora ? "Hora: " + evento.hora + "\n" : ""}${evento.clienteNombre ? "Cliente: " + evento.clienteNombre + "\n" : ""}${evento.descripcion || ""}`,
+              fecha: new Date().toISOString(),
+              fechaVencimiento: evento.fecha,
+              prioridad: diferenciaDias === 0 ? "critica" : "normal",
+            })
+          }
+        })
+
+        // 3. DEUDAS
+        casesSnap.forEach((doc) => {
+          const caso = doc.data() as Case
+          if (caso.estadoPago === "Debe") {
+            alertasDerecha.push({
+              id: `deuda-${doc.id}`,
+              tipo: "deudor",
+              titulo: "Pago pendiente",
+              mensaje: `Caso: ${caso.nombre}\nCliente: ${caso.clienteNombre || "Sin nombre"}\nExpediente: ${caso.expediente || "N/D"}`,
+              fecha: new Date().toISOString(),
+              fechaVencimiento: "",
+            })
+          }
+        })
+
+        // Ordenar por fecha más próxima
+        alertasIzquierda.sort((a, b) => {
+          const dateA = new Date(a.fechaVencimiento).getTime()
+          const dateB = new Date(b.fechaVencimiento).getTime()
+          return dateA - dateB
+        })
+
+        setPlazosYEventos(alertasIzquierda)
+        setDeudas(alertasDerecha)
+      } catch (error) {
+        console.error("Error cargando notificaciones:", error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const getColor = (tipo: string) => {
-    switch (tipo) {
-      case "plazo":
-        return "text-amber-600 dark:text-amber-400"
-      case "evento":
-        return "text-blue-600 dark:text-blue-400"
-      case "deudor":
-        return "text-red-600 dark:text-red-400"
-      default:
-        return "text-muted-foreground"
-    }
-  }
+    fetchNotifications()
+  }, [])
+
+  const totalAlerts = plazosYEventos.length + deudas.length
 
   return (
     <AppLayout>
-      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground flex items-center gap-3">
-              <Bell className="h-8 w-8" />
-              Notificaciones
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {unreadCount > 0
-                ? `${unreadCount} notificación${unreadCount !== 1 ? "es" : ""} sin leer`
-                : "Todas las notificaciones leídas"}
-            </p>
-          </div>
-
-          {unreadCount > 0 && (
-            <Button onClick={markAllAsRead} variant="outline" size="sm">
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Marcar todas como leídas
-            </Button>
-          )}
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground flex items-center gap-3">
+            <Bell className="h-8 w-8" />
+            Notificaciones
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            {loading
+              ? "Cargando alertas..."
+              : totalAlerts > 0
+                ? `${totalAlerts} alerta${totalAlerts > 1 ? "s" : ""} activa${totalAlerts > 1 ? "s" : ""}`
+                : "Todo al día 🎉"}
+          </p>
         </div>
 
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">Centro de Notificaciones</CardTitle>
-            <CardDescription>
-              Recordatorios importantes sobre plazos, eventos y pagos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Bell className="h-20 w-20 text-muted-foreground/30 mb-6" />
-                <p className="text-xl text-muted-foreground">Sin notificaciones</p>
-                <p className="text-sm text-muted-foreground/70 mt-2">
-                  Todo al día 🎉
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={cn(
-                      "p-5 hover:bg-accent/5 transition-colors",
-                      !notification.leida && "bg-primary/5"
-                    )}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Ícono con color según tipo */}
-                      <div className={cn("mt-1 flex-shrink-0", getColor(notification.tipo))}>
-                        {getIcon(notification.tipo)}
-                      </div>
-
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold text-foreground">
-                            {notification.titulo}
-                          </h3>
-                          <Badge variant="secondary" className="text-xs">
-                            {notification.tipo}
-                          </Badge>
-                          {!notification.leida && (
-                            <Badge className="bg-primary text-primary-foreground text-xs">
-                              Nueva
-                            </Badge>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-foreground/80 leading-relaxed">
-                          {notification.mensaje}
-                        </p>
-
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(notification.fecha).toLocaleDateString("es-AR", {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "long",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-
-                      {/* Botón marcar como leída */}
-                      {!notification.leida && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                          className="flex-shrink-0"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                        </Button>
-                      )}
+        {/* Layout de dos columnas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* IZQUIERDA: Plazos y Eventos */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-6 w-6" />
+                  Plazos y Eventos Próximos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-96 overflow-y-auto">
+                {/* Añadido pb-8 para margen inferior */}
+                <div className="pb-8">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ) : plazosYEventos.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <Calendar className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                      <p className="text-muted-foreground">No hay plazos ni eventos próximos</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {plazosYEventos.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={cn(
+                            "p-5 hover:bg-accent/5 transition-colors",
+                            notif.prioridad === "critica" && "bg-destructive/5 border-l-4 border-l-destructive"
+                          )}
+                        >
+                          <div className="flex items-start gap-4">
+                            <Calendar
+                              className={cn(
+                                "h-5 w-5 mt-1 flex-shrink-0",
+                                notif.prioridad === "critica" ? "text-destructive animate-pulse" : "text-amber-600 dark:text-amber-400"
+                              )}
+                            />
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h3 className={cn(
+                                  "font-semibold",
+                                  notif.prioridad === "critica" && "text-destructive"
+                                )}>
+                                  {notif.titulo}
+                                </h3>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-xs",
+                                    notif.tipo === "plazo" && "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300",
+                                    notif.tipo === "evento" && "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300"
+                                  )}
+                                >
+                                  {notif.tipo === "plazo" ? "Plazo" : "Agenda"}
+                                </Badge>
+                                {notif.prioridad === "critica" && (
+                                  <Badge className="bg-destructive text-destructive-foreground text-xs">
+                                    CRÍTICA
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-foreground/80 whitespace-pre-line">
+                                {notif.mensaje}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Generada: {formatDate(notif.fecha)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* DERECHA: Deudas */}
+          <div className="lg:col-span-1">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-6 w-6" />
+                  Pagos Pendientes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-96 overflow-y-auto">
+                {/* Añadido pb-8 para margen inferior */}
+                <div className="pb-8">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    </div>
+                  ) : deudas.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <DollarSign className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                      <p className="text-muted-foreground">No hay deudas pendientes</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {deudas.map((notif) => (
+                        <div key={notif.id} className="p-5 hover:bg-accent/5 transition-colors">
+                          <div className="flex items-start gap-4">
+                            <DollarSign className="h-5 w-5 mt-1 text-red-600 dark:text-red-400" />
+                            <div className="flex-1">
+                              <h3 className="font-semibold mb-1">{notif.titulo}</h3>
+                              <p className="text-sm text-foreground/80 whitespace-pre-line">
+                                {notif.mensaje}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Detectado: {formatDate(notif.fecha)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </AppLayout>
   )

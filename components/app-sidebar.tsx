@@ -67,7 +67,6 @@ export function AppSidebar() {
           <p className="text-sm font-medium text-foreground truncate">
             {userEmail}
           </p>
-          <p className="text-xs text-muted-foreground">Abogado</p>
         </div>
 
         <Button

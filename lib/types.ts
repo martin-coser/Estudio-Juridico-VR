@@ -8,6 +8,13 @@ export interface Client {
   createdAt: number
 }
 
+export interface Plazo {
+  id: string                 
+  nombre: string             
+  descripcion?: string       
+  fecha: string              
+}
+
 export interface Case {
   id: string
   tipo: "SRT" | "ART" | "FAMILIA" | "LABORAL DESPIDOS" | "DAÑOS Y PERJUICIOS"
@@ -21,9 +28,9 @@ export interface Case {
   nombreCaso?: string
   tipoProceso?: string
   motivo?: string
+  localidad?: string
   dependencia?: string
-  telefono?: string
-  plazo?: string
+  plazos: Plazo[]          
   estadoPago: "Pagado" | "Debe"
   createdAt: number
 }

@@ -22,7 +22,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { collection, addDoc, updateDoc, doc, getDocs, query, orderBy } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import type { Case, Client } from "@/lib/types"
+import type { Case, Client, Plazo } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { ClientDialog } from "./client-dialog"
 
@@ -34,6 +34,25 @@ interface CaseDialogProps {
 }
 
 const caseTypes = ["SRT", "ART", "FAMILIA", "LABORAL DESPIDOS", "DAÑOS Y PERJUICIOS"] as const
+
+const localidades = ["Río Cuarto", "Villa María", "Alta Gracia"] as const
+
+const dependenciasPorLocalidad: Record<string, string[]> = {
+  "Río Cuarto": ["Juzgado Civil 1° Nom.", "Juzgado Civil 2° Nom.", "Cámara Civil"],
+  "Villa María": ["Juzgado de 1ra Instancia", "Juzgado de Ejecución", "Tribunal de Familia"],
+  "Alta Gracia": ["Juzgado Civil y Comercial", "Juzgado de Paz", "Fuero Laboral"],
+}
+
+const tiposProceso = [
+  "Ordinario",
+  "Sumario",
+  "Ejecutivo",
+  "Sucesorio",
+  "Concursal",
+  "Medidas Cautelares",
+  "Amparo",
+  "Laboral",
+] as const
 
 export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDialogProps) {
   const [loading, setLoading] = useState(false)
@@ -50,11 +69,11 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
     nombreCaso: caseData?.nombreCaso || "",
     tipoProceso: caseData?.tipoProceso || "",
     motivo: caseData?.motivo || "",
+    localidad: caseData?.localidad || "",
     dependencia: caseData?.dependencia || "",
-    telefono: caseData?.telefono || "",
-    estado: caseData?.estado || "",
+    estado: caseData?.estado || "Activo",
     homologacionSentencia: caseData?.homologacionSentencia || "",
-    plazo: caseData?.plazo || "",
+    plazos: caseData?.plazos || [],
     estadoPago: caseData?.estadoPago || "Debe",
   })
 
@@ -74,11 +93,11 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           nombreCaso: caseData.nombreCaso || "",
           tipoProceso: caseData.tipoProceso || "",
           motivo: caseData.motivo || "",
+          localidad: caseData.localidad || "",
           dependencia: caseData.dependencia || "",
-          telefono: caseData.telefono || "",
-          estado: caseData.estado || "",
+          estado: caseData.estado || "Activo",
           homologacionSentencia: caseData.homologacionSentencia || "",
-          plazo: caseData.plazo || "",
+          plazos: caseData.plazos || [],
           estadoPago: caseData.estadoPago || "Debe",
         })
       } else {
@@ -92,11 +111,11 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           nombreCaso: "",
           tipoProceso: "",
           motivo: "",
+          localidad: "",
           dependencia: "",
-          telefono: "",
-          estado: "",
+          estado: "Activo",
           homologacionSentencia: "",
-          plazo: "",
+          plazos: [],
           estadoPago: "Debe",
         })
       }
@@ -130,19 +149,18 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
     try {
       const selectedClient = clients.find((c) => c.id === formData.clienteId)
 
+      const dataToSave = {
+        ...formData,
+        clienteNombre: selectedClient?.nombre || "",
+        ...(caseData ? {} : { createdAt: Date.now() }),
+      }
+
       if (caseData) {
         const caseRef = doc(db, "cases", caseData.id)
-        await updateDoc(caseRef, {
-          ...formData,
-          clienteNombre: selectedClient?.nombre || "",
-        })
+        await updateDoc(caseRef, dataToSave)
         toast({ title: "Caso actualizado", description: "El caso ha sido actualizado correctamente." })
       } else {
-        await addDoc(collection(db, "cases"), {
-          ...formData,
-          clienteNombre: selectedClient?.nombre || "",
-          createdAt: Date.now(),
-        })
+        await addDoc(collection(db, "cases"), dataToSave)
         toast({ title: "Caso creado", description: "El caso ha sido creado correctamente." })
       }
 
@@ -162,16 +180,16 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
   }
 
   const renderTypeSelection = () => (
-    <div className="space-y-6">
-      <p className="text-center text-muted-foreground">
+    <div className="space-y-8 py-8">
+      <p className="text-center text-lg text-muted-foreground">
         Selecciona el tipo de caso para continuar
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
         {caseTypes.map((type) => (
           <Button
             key={type}
             variant="outline"
-            className="h-24 text-base font-medium hover:bg-accent hover:text-accent-foreground transition-all"
+            className="h-28 text-lg font-medium hover:bg-accent hover:text-accent-foreground transition-all border-2"
             onClick={() => handleTypeSelect(type)}
           >
             {type}
@@ -184,39 +202,66 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
   const renderForm = () => {
     const isSRTorART = formData.tipo === "SRT" || formData.tipo === "ART"
 
+    const addPlazo = () => {
+      const nuevo: Plazo = {
+        id: Date.now().toString(),
+        nombre: "",
+        descripcion: "",
+        fecha: "",
+      }
+      setFormData((prev) => ({
+        ...prev,
+        plazos: [...(prev.plazos || []), nuevo],
+      }))
+    }
+
+    const removePlazo = (id: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        plazos: prev.plazos?.filter((p) => p.id !== id) || [],
+      }))
+    }
+
+    const updatePlazo = (id: string, field: keyof Plazo, value: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        plazos: prev.plazos?.map((p) => (p.id === id ? { ...p, [field]: value } : p)) || [],
+      }))
+    }
+
     return (
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Área scrolleable del formulario */}
-        <div className="max-h-[65vh] overflow-y-auto pr-1 -mr-1 pb-4">
-          {/* Tipo seleccionado */}
-          <div className="mb-6 rounded-lg bg-accent/10 p-4 border border-accent/20">
-            <p className="text-sm font-semibold text-accent">Tipo de Caso:</p>
-            <p className="text-lg font-bold text-foreground">{formData.tipo}</p>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-6 py-6">
+        {/* Tipo seleccionado */}
+        <div className="rounded-lg bg-accent/10 p-4 border border-accent/20">
+          <p className="text-sm font-semibold text-accent">Tipo de Caso:</p>
+          <p className="text-lg font-bold text-foreground">{formData.tipo}</p>
+        </div>
 
-          {/* Campos agrupados con mejor espaciado */}
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-5">
-              <div>
-                <Label htmlFor="nombre">Nombre del Caso *</Label>
-                <Input
-                  id="nombre"
-                  value={formData.nombre ?? ""}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  required
-                  placeholder="Ej: González c/ SRT"
-                />
-              </div>
+        {/* Campos principales - todos los Select con ancho uniforme */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <Label htmlFor="nombre">Nombre del Caso *</Label>
+              <Input
+                id="nombre"
+                value={formData.nombre ?? ""}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                required
+                placeholder="Ej: González c/ SRT"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="cliente">Cliente *</Label>
-                <div className="flex flex-col sm:flex-row gap-3 mt-1">
+            {/* Cliente con botón + Nuevo */}
+            <div>
+              <Label htmlFor="cliente">Cliente *</Label>
+              <div className="grid grid-cols-4 gap-3 mt-1">
+                <div className="col-span-3">
                   <Select
                     value={formData.clienteId ?? ""}
                     onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
                   >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleccionar cliente existente" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccionar cliente" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients.map((client) => (
@@ -226,158 +271,233 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <Button type="button" variant="outline" onClick={() => setClientDialogOpen(true)} className="h-10">
+                  + Nuevo
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="expediente">Expediente</Label>
+              <Input
+                id="expediente"
+                value={formData.expediente ?? ""}
+                onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
+                placeholder="Ej: 12345/2025"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="nombreCaso">Nombre Descriptivo</Label>
+              <Input
+                id="nombreCaso"
+                value={formData.nombreCaso ?? ""}
+                onChange={(e) => setFormData({ ...formData, nombreCaso: e.target.value })}
+                placeholder="Ej: Accidente laboral - fractura"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="localidad">Localidad *</Label>
+              <Select
+                value={formData.localidad ?? ""}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, localidad: value, dependencia: "" })
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar localidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {localidades.map((loc) => (
+                    <SelectItem key={loc} value={loc}>
+                      {loc}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="dependencia">Dependencia *</Label>
+              <Select
+                value={formData.dependencia ?? ""}
+                onValueChange={(value) => setFormData({ ...formData, dependencia: value })}
+                disabled={!formData.localidad}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Primero selecciona localidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(dependenciasPorLocalidad[formData.localidad || ""] || []).map((dep) => (
+                    <SelectItem key={dep} value={dep}>
+                      {dep}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="tipoProceso">Tipo de Proceso</Label>
+              <Select
+                value={formData.tipoProceso ?? ""}
+                onValueChange={(value) => setFormData({ ...formData, tipoProceso: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tiposProceso.map((tp) => (
+                    <SelectItem key={tp} value={tp}>
+                      {tp}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="estado">Estado del Caso *</Label>
+              <Select
+                value={formData.estado ?? "Activo"}
+                onValueChange={(value: "Activo" | "Inactivo") => setFormData({ ...formData, estado: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Activo">Activo</SelectItem>
+                  <SelectItem value="Inactivo">Inactivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="estadoPago">Estado de Pago *</Label>
+              <Select
+                value={formData.estadoPago ?? "Debe"}
+                onValueChange={(value: "Pagado" | "Debe") => setFormData({ ...formData, estadoPago: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pagado">Pagado</SelectItem>
+                  <SelectItem value="Debe">Debe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Resto del formulario */}
+          <div>
+            <Label htmlFor="motivo">Motivo</Label>
+            <Textarea
+              id="motivo"
+              value={formData.motivo ?? ""}
+              onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+              rows={3}
+              placeholder="Descripción breve del motivo"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="homologacionSentencia">Homologación / Sentencia</Label>
+            <Textarea
+              id="homologacionSentencia"
+              value={formData.homologacionSentencia ?? ""}
+              onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
+              rows={4}
+            />
+          </div>
+
+          {isSRTorART && (
+            <div>
+              <Label htmlFor="patologia">Patología</Label>
+              <Textarea
+                id="patologia"
+                value={formData.patologia ?? ""}
+                onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
+                rows={3}
+                placeholder="Descripción médica detallada"
+              />
+            </div>
+          )}
+
+          {/* Plazos múltiples */}
+          <div className="space-y-4 pt-6 border-t">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">Plazos del Caso</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addPlazo}>
+                + Agregar Plazo
+              </Button>
+            </div>
+
+            {(!formData.plazos || formData.plazos.length === 0) && (
+              <p className="text-sm text-muted-foreground italic">No hay plazos agregados aún.</p>
+            )}
+
+            {formData.plazos?.map((plazo, index) => (
+              <div key={plazo.id} className="rounded-lg border bg-card p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-medium">Plazo {index + 1}</h4>
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={() => setClientDialogOpen(true)}
-                    className="sm:w-auto"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => removePlazo(plazo.id)}
                   >
-                    + Nuevo Cliente
+                    Eliminar
                   </Button>
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="expediente">Expediente</Label>
-                <Input
-                  id="expediente"
-                  value={formData.expediente ?? ""}
-                  onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
-                  placeholder="Ej: 12345/2025"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="nombreCaso">Nombre Descriptivo</Label>
-                <Input
-                  id="nombreCaso"
-                  value={formData.nombreCaso ?? ""}
-                  onChange={(e) => setFormData({ ...formData, nombreCaso: e.target.value })}
-                  placeholder="Ej: Accidente laboral - fractura"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="tipoProceso">Tipo de Proceso</Label>
-                <Input
-                  id="tipoProceso"
-                  value={formData.tipoProceso ?? ""}
-                  onChange={(e) => setFormData({ ...formData, tipoProceso: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="motivo">Motivo</Label>
-                <Textarea
-                  id="motivo"
-                  value={formData.motivo ?? ""}
-                  onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
-                  rows={3}
-                  placeholder="Descripción breve del motivo"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <Label htmlFor="dependencia">Dependencia</Label>
-                  <Input
-                    id="dependencia"
-                    value={formData.dependencia ?? ""}
-                    onChange={(e) => setFormData({ ...formData, dependencia: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    value={formData.telefono ?? ""}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="estado">Estado Actual</Label>
-                <Input
-                  id="estado"
-                  value={formData.estado ?? ""}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                  placeholder="Ej: En trámite, A la espera de pericia..."
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="homologacionSentencia">Homologación / Sentencia</Label>
-                <Textarea
-                  id="homologacionSentencia"
-                  value={formData.homologacionSentencia ?? ""}
-                  onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
-                  rows={4}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <Label htmlFor="plazo">Plazo / Vencimiento</Label>
-                  <Input
-                    id="plazo"
-                    type="date"
-                    value={formData.plazo ?? ""}
-                    onChange={(e) => setFormData({ ...formData, plazo: e.target.value })}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor={`plazo-nombre-${plazo.id}`}>Nombre *</Label>
+                    <Input
+                      id={`plazo-nombre-${plazo.id}`}
+                      value={plazo.nombre}
+                      onChange={(e) => updatePlazo(plazo.id, "nombre", e.target.value)}
+                      placeholder="Ej: Presentación de demanda"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`plazo-fecha-${plazo.id}`}>Fecha *</Label>
+                    <Input
+                      id={`plazo-fecha-${plazo.id}`}
+                      type="date"
+                      value={plazo.fecha}
+                      onChange={(e) => updatePlazo(plazo.id, "fecha", e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="estadoPago">Estado de Pago *</Label>
-                  <Select
-                    value={formData.estadoPago ?? "Debe"}
-                    onValueChange={(value: "Pagado" | "Debe") =>
-                      setFormData({ ...formData, estadoPago: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pagado">Pagado</SelectItem>
-                      <SelectItem value="Debe">Debe</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {isSRTorART && (
-                <div>
-                  <Label htmlFor="patologia">Patología</Label>
+                  <Label htmlFor={`plazo-desc-${plazo.id}`}>Descripción (opcional)</Label>
                   <Textarea
-                    id="patologia"
-                    value={formData.patologia ?? ""}
-                    onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
-                    rows={3}
-                    placeholder="Descripción médica detallada"
+                    id={`plazo-desc-${plazo.id}`}
+                    value={plazo.descripcion || ""}
+                    onChange={(e) => updatePlazo(plazo.id, "descripcion", e.target.value)}
+                    rows={2}
+                    placeholder="Detalles adicionales"
                   />
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Botones fijos al final */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border sticky bottom-0 bg-background -mx-6 px-6 -mb-6 pb-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-            className="order-2 sm:order-1"
-          >
+        {/* Botones fijos */}
+        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t -mx-6 px-6 pb-6 bg-background sticky bottom-0">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="order-1 sm:order-2 bg-primary hover:bg-primary/90"
-          >
+          <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
             {loading ? "Guardando..." : caseData ? "Actualizar Caso" : "Crear Caso"}
           </Button>
         </div>
@@ -388,31 +508,23 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="
-            max-w-full 
-            w-[95vw] 
-            sm:max-w-2xl 
-            md:max-w-4xl 
-            max-h-[95vh] 
-            flex flex-col
-            p-0
-          "
-        >
-          <DialogHeader className="p-6 pb-4 border-b">
+        <DialogContent className="max-w-full w-[95vw] sm:max-w-2xl md:max-w-4xl max-h-[95vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b shrink-0">
             <DialogTitle className="text-2xl">
               {caseData ? "Editar Caso" : "Nuevo Caso"}
             </DialogTitle>
-            <DialogDescription className="text-base">
-              {caseData
-                ? "Modifica los datos del caso"
-                : step === "type"
-                  ? "Primero selecciona el tipo de caso"
-                  : "Completa toda la información requerida"}
+            <DialogDescription asChild>
+              <p className="text-base text-muted-foreground">
+                {caseData
+                  ? "Modifica los datos del caso"
+                  : step === "type"
+                    ? "Primero selecciona el tipo de caso"
+                    : "Completa toda la información requerida"}
+              </p>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden px-6">
+          <div className="flex-1 overflow-y-auto px-6">
             {step === "type" ? renderTypeSelection() : renderForm()}
           </div>
         </DialogContent>
