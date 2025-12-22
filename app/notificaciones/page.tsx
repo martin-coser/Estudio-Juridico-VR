@@ -32,12 +32,33 @@ export default function NotificacionesPage() {
         const alertasIzquierda: Notification[] = []
         const alertasDerecha: Notification[] = []
 
-        const hoy = new Date()
-        hoy.setHours(0, 0, 0, 0)
+        // 1. Obtener "Hoy" local a las 00:00:00 para comparar días exactos
+        const ahora = new Date()
+        const hoyLocal = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate())
 
-        // 1. PLAZOS PRÓXIMOS
+        /**
+         * Función para parsear fecha evitando el error de zona horaria.
+         * Si recibe "2023-10-23", crea el objeto Date localmente para ese día.
+         */
+        const parsearFechaLocal = (fechaStr: string) => {
+          if (!fechaStr) return null;
+          // Separamos por guion o barra
+          const partes = fechaStr.split(/[-/]/);
+          if (partes.length === 3) {
+            const year = parseInt(partes[0]);
+            const month = parseInt(partes[1]) - 1; // Enero es 0
+            const day = parseInt(partes[2].substring(0, 2)); // Tomar solo los primeros 2 caracteres por si hay hora
+            return new Date(year, month, day);
+          }
+          // Fallback por si el formato es distinto
+          const d = new Date(fechaStr);
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        }
+
         const casesSnap = await getDocs(collection(db, "cases"))
+        const eventsSnap = await getDocs(collection(db, "events"))
 
+        // === PROCESAR PLAZOS (Casos) ===
         casesSnap.forEach((doc) => {
           const caso = doc.data() as Case
           if (!caso.plazos || caso.plazos.length === 0) return
@@ -45,16 +66,21 @@ export default function NotificacionesPage() {
           caso.plazos.forEach((plazo) => {
             if (!plazo.fecha) return
 
-            const fechaPlazo = new Date(plazo.fecha)
-            const diferenciaDias = Math.floor((fechaPlazo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+            const fechaPlazoLocal = parsearFechaLocal(plazo.fecha)
+            if (!fechaPlazoLocal) return
 
+            // Calculamos diferencia en días exactos
+            const diffTime = fechaPlazoLocal.getTime() - hoyLocal.getTime()
+            const diferenciaDias = Math.round(diffTime / (1000 * 60 * 60 * 24))
+
+            // Rango de alerta: Hoy (0), Mañana (1) y Pasado Mañana (2)
             if (diferenciaDias <= 2 && diferenciaDias >= 0) {
               alertasIzquierda.push({
                 id: `plazo-${doc.id}-${plazo.id}`,
                 tipo: "plazo",
                 titulo: diferenciaDias === 0 ? "Vencimiento HOY" : `Vencimiento en ${diferenciaDias} día${diferenciaDias > 1 ? "s" : ""}`,
                 mensaje: `Caso: ${caso.nombre}\nPlazo: ${plazo.nombre}\n${plazo.descripcion ? plazo.descripcion + "\n" : ""}Fecha: ${formatDate(plazo.fecha)}`,
-                fecha: new Date().toISOString(),
+                fecha: ahora.toISOString(),
                 fechaVencimiento: plazo.fecha,
                 prioridad: diferenciaDias === 0 ? "critica" : "normal",
               })
@@ -62,15 +88,16 @@ export default function NotificacionesPage() {
           })
         })
 
-        // 2. EVENTOS PRÓXIMOS
-        const eventsSnap = await getDocs(collection(db, "events"))
-
+        // === PROCESAR EVENTOS ===
         eventsSnap.forEach((doc) => {
           const evento = doc.data() as Event
           if (!evento.fecha) return
 
-          const fechaEvento = new Date(evento.fecha)
-          const diferenciaDias = Math.floor((fechaEvento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+          const fechaEventoLocal = parsearFechaLocal(evento.fecha)
+          if (!fechaEventoLocal) return
+
+          const diffTime = fechaEventoLocal.getTime() - hoyLocal.getTime()
+          const diferenciaDias = Math.round(diffTime / (1000 * 60 * 60 * 24))
 
           if (diferenciaDias <= 2 && diferenciaDias >= 0) {
             alertasIzquierda.push({
@@ -78,14 +105,14 @@ export default function NotificacionesPage() {
               tipo: "evento",
               titulo: diferenciaDias === 0 ? "Evento HOY" : `Evento en ${diferenciaDias} día${diferenciaDias > 1 ? "s" : ""}`,
               mensaje: `${evento.titulo}\n${evento.hora ? "Hora: " + evento.hora + "\n" : ""}${evento.clienteNombre ? "Cliente: " + evento.clienteNombre + "\n" : ""}${evento.descripcion || ""}`,
-              fecha: new Date().toISOString(),
+              fecha: ahora.toISOString(),
               fechaVencimiento: evento.fecha,
               prioridad: diferenciaDias === 0 ? "critica" : "normal",
             })
           }
         })
 
-        // 3. DEUDAS
+        // === PROCESAR DEUDAS ===
         casesSnap.forEach((doc) => {
           const caso = doc.data() as Case
           if (caso.estadoPago === "Debe") {
@@ -94,13 +121,13 @@ export default function NotificacionesPage() {
               tipo: "deudor",
               titulo: "Pago pendiente",
               mensaje: `Caso: ${caso.nombre}\nCliente: ${caso.clienteNombre || "Sin nombre"}\nExpediente: ${caso.expediente || "N/D"}`,
-              fecha: new Date().toISOString(),
+              fecha: ahora.toISOString(),
               fechaVencimiento: "",
             })
           }
         })
 
-        // Ordenar por fecha más próxima
+        // Ordenar por fecha de vencimiento ascendente
         alertasIzquierda.sort((a, b) => {
           const dateA = new Date(a.fechaVencimiento).getTime()
           const dateB = new Date(b.fechaVencimiento).getTime()
@@ -206,9 +233,6 @@ export default function NotificacionesPage() {
                               <p className="text-sm text-foreground/80 whitespace-pre-line">
                                 {notif.mensaje}
                               </p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Generada: {formatDate(notif.fecha)}
-                              </p>
                             </div>
                           </div>
                         </div>
@@ -251,9 +275,6 @@ export default function NotificacionesPage() {
                               <h3 className="font-semibold mb-1">{notif.titulo}</h3>
                               <p className="text-sm text-foreground/80 whitespace-pre-line">
                                 {notif.mensaje}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Detectado: {formatDate(notif.fecha)}
                               </p>
                             </div>
                           </div>
