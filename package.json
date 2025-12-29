@@ -6,6 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
+    "tauri": "tauri",
     "start": "next start"
   },
   "dependencies": {
