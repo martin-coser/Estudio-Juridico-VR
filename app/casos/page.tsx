@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { CaseDialog } from "@/components/case-dialog"
 import { CaseDetailsDialog } from "@/components/case-details-dialog"
-import { Plus, Search, Pencil, Trash2, Filter, Eye, Calendar, User, FileText, DollarSign, AlertCircle } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, Filter, Eye, Calendar, User, FileText, DollarSign, AlertCircle, AlertTriangle, FileText as FileIcon, CheckSquare } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, deleteDoc, doc, orderBy, query, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -27,32 +27,80 @@ import type { Case } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
-// Fecha actual real del sistema
-const today = new Date()
+// === CÁLCULOS DE FECHA CORREGIDOS (sin desfase UTC) ===
 
-const formatDate = (dateString: string | undefined) => {
+// Hoy a las 00:00 (hora local)
+const todayStart = new Date()
+todayStart.setHours(0, 0, 0, 0)
+
+// Hoy + 7 días a las 00:00
+const sevenDaysFromNowStart = new Date(todayStart)
+sevenDaysFromNowStart.setDate(todayStart.getDate() + 7)
+
+// Convierte "YYYY-MM-DD" a Date en zona local (a las 00:00)
+const parseDateAsLocal = (dateStr: string): Date => {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+// Formateo seguro para mostrar
+const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return "-"
-  const date = new Date(dateString)
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+  const [year, month, day] = dateString.split("-").map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
 }
 
-// Función para obtener el plazo más próximo (o vencido)
-const getNextOrOverdueDeadline = (plazos: Case["plazos"] = []) => {
+// Próximo plazo futuro
+const getNextUpcomingDeadline = (plazos: Case["plazos"] = []) => {
   if (!plazos || plazos.length === 0) return null
+  const validPlazos = plazos
+    .filter(p => p.fecha)
+    .map(p => ({ ...p, dateObj: parseDateAsLocal(p.fecha!) }))
+    .filter(p => p.dateObj >= todayStart)
 
-  const futureOrToday = plazos
-    .filter(p => p.fecha && new Date(p.fecha) >= today)
-    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+  if (validPlazos.length === 0) return null
 
-  const overdue = plazos
-    .filter(p => p.fecha && new Date(p.fecha) < today)
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()) 
-
-  return futureOrToday[0] || overdue[0] || null
+  validPlazos.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime())
+  return validPlazos[0]
 }
 
+// Plazos vencidos
 const hasOverdueDeadline = (plazos: Case["plazos"] = []) => {
-  return plazos.some(p => p.fecha && new Date(p.fecha) < today)
+  return plazos.some(p => {
+    if (!p.fecha) return false
+    const plazoDate = parseDateAsLocal(p.fecha)
+    return plazoDate < todayStart
+  })
+}
+
+// Plazos próximos (7 días)
+const hasDeadlineSoon = (plazos: Case["plazos"] = []) => {
+  return plazos.some(p => {
+    if (!p.fecha) return false
+    const plazoDate = parseDateAsLocal(p.fecha)
+    return plazoDate >= todayStart && plazoDate <= sevenDaysFromNowStart
+  })
+}
+
+// Alerta general
+const getCaseAlertStatus = (plazos: Case["plazos"] = []) => {
+  if (hasOverdueDeadline(plazos)) return "overdue"
+  if (hasDeadlineSoon(plazos)) return "soon"
+  return null
+}
+
+// Oficios pendientes
+const hasPendingOficio = (oficios: Case["oficios"] = []) => {
+  return oficios.some(o => !o.entregado)
+}
+
+// Tareas pendientes
+const hasPendingTarea = (tareas: Case["tareas"] = []) => {
+  return tareas.some(t => !t.entregado)
 }
 
 export default function CasosPage() {
@@ -100,7 +148,7 @@ export default function CasosPage() {
       const term = filters.search.toLowerCase()
       filtered = filtered.filter(
         (c) =>
-          c.nombre?.toLowerCase().includes(term) ||
+          c.caratula?.toLowerCase().includes(term) ||
           c.expediente?.toLowerCase().includes(term) ||
           c.clienteNombre?.toLowerCase().includes(term)
       )
@@ -173,53 +221,95 @@ export default function CasosPage() {
         {/* Filtros */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Filtros</CardTitle>
-            <CardDescription>{filteredCases.length} caso{filteredCases.length !== 1 && "s"} encontrado{filteredCases.length !== 1 && "s"}</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle>Filtros</CardTitle>
+                <CardDescription>
+                  {filteredCases.length} caso{filteredCases.length !== 1 && "s"} encontrado{filteredCases.length !== 1 && "s"}
+                </CardDescription>
+              </div>
+
+              {/* Leyenda de íconos - solo visible en pantallas medianas y grandes */}
+              <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span title="Plazos vencidos">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                  </span>
+                  <span>Plazo Vencido</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span title="Plazo próximo a vencer">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  </span>
+                  <span>Plazo Próximo (7 días)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span title="Oficios pendientes">
+                    <FileIcon className="h-4 w-4 text-orange-600" />
+                  </span>
+                  <span>Oficios pendientes</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span title="Tareas pendientes">
+                    <CheckSquare className="h-4 w-4 text-blue-600" />
+                  </span>
+                  <span>Tareas pendientes</span>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="relative">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+              <div className="relative col-span-1 sm:col-span-2 lg:col-span-6">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nombre, expediente o cliente..."
+                  placeholder="Buscar por carátula, expediente o cliente..."
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   className="pl-10"
                 />
               </div>
 
-              <Select value={filters.tipo} onValueChange={(value) => setFilters({ ...filters, tipo: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo de caso" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los tipos</SelectItem>
-                  <SelectItem value="SRT">SRT</SelectItem>
-                  <SelectItem value="ART">ART</SelectItem>
-                  <SelectItem value="FAMILIA">FAMILIA</SelectItem>
-                  <SelectItem value="LABORAL DESPIDOS">LABORAL DESPIDOS</SelectItem>
-                  <SelectItem value="DAÑOS Y PERJUICIOS">DAÑOS Y PERJUICIOS</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="lg:col-span-2">
+                <Select value={filters.tipo} onValueChange={(value) => setFilters({ ...filters, tipo: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo de caso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    <SelectItem value="SRT">SRT</SelectItem>
+                    <SelectItem value="ART">ART</SelectItem>
+                    <SelectItem value="FAMILIA">FAMILIA</SelectItem>
+                    <SelectItem value="LABORAL DESPIDOS">LABORAL DESPIDOS</SelectItem>
+                    <SelectItem value="DAÑOS Y PERJUICIOS">DAÑOS Y PERJUICIOS</SelectItem>
+                    <SelectItem value="OTRO">OTRO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <Select value={filters.estadoPago} onValueChange={(value) => setFilters({ ...filters, estadoPago: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Estado de pago" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="Pagado">Pagado</SelectItem>
-                  <SelectItem value="Debe">Debe</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="lg:col-span-2">
+                <Select value={filters.estadoPago} onValueChange={(value) => setFilters({ ...filters, estadoPago: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Estado de pago" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="Pagado">Pagado</SelectItem>
+                    <SelectItem value="Debe">Debe</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <Button
-                variant="outline"
-                onClick={() => setFilters({ search: "", tipo: "all", estadoPago: "all" })}
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                Limpiar filtros
-              </Button>
+              <div className="lg:col-span-2 flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setFilters({ search: "", tipo: "all", estadoPago: "all" })}
+                  className="w-full"
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Limpiar filtros
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -244,23 +334,42 @@ export default function CasosPage() {
             {/* Vista móvil: Cards */}
             <div className="grid gap-4 md:hidden">
               {filteredCases.map((caseData) => {
-                const nextDeadline = getNextOrOverdueDeadline(caseData.plazos)
-                const isOverdue = hasOverdueDeadline(caseData.plazos)
+                const nextUpcoming = getNextUpcomingDeadline(caseData.plazos)
+                const alertStatus = getCaseAlertStatus(caseData.plazos)
+                const pendingOficio = hasPendingOficio(caseData.oficios)
+                const pendingTarea = hasPendingTarea(caseData.tareas)
 
                 return (
                   <Card key={caseData.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <div>
-                          <Badge variant="outline" className="mb-2">{caseData.tipo}</Badge>
-                          <h3 className="font-bold text-lg">{caseData.nombre}</h3>
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <Badge variant="outline">{caseData.tipo}</Badge>
+                            {alertStatus === "overdue" && (
+                              <span title="Plazos vencidos">
+                                <AlertCircle className="h-5 w-5 text-destructive" />
+                              </span>
+                            )}
+                            {alertStatus === "soon" && (
+                              <span title="Plazo próximo a vencer">
+                                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                              </span>
+                            )}
+                            {pendingOficio && (
+                              <span title="Oficios pendientes">
+                                <FileIcon className="h-5 w-5 text-orange-600" />
+                              </span>
+                            )}
+                            {pendingTarea && (
+                              <span title="Tareas pendientes">
+                                <CheckSquare className="h-5 w-5 text-blue-600" />
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-bold text-lg">{caseData.caratula}</h3>
                           {caseData.expediente && <p className="text-sm text-muted-foreground">Exp: {caseData.expediente}</p>}
                         </div>
-                        {isOverdue && (
-                          <span className="flex items-center" aria-label="Tiene plazos vencidos" title="Tiene plazos vencidos">
-                            <AlertCircle className="h-6 w-6 text-destructive" />
-                          </span>
-                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -274,12 +383,12 @@ export default function CasosPage() {
                           <span className="truncate">{caseData.estado || "-"}</span>
                         </div>
                         <div className="flex items-center gap-2 col-span-2">
-                          <Calendar className={cn("h-4 w-4", isOverdue ? "text-destructive" : "text-muted-foreground")} />
+                          <Calendar className={cn("h-4 w-4", alertStatus && "text-orange-500")} />
                           <div>
-                            <p className={cn("font-medium", isOverdue && "text-destructive")}>
-                              {nextDeadline ? `${nextDeadline.nombre}: ${formatDate(nextDeadline.fecha)}` : "Sin plazos"}
+                            <p className="font-medium">
+                              {nextUpcoming ? `${nextUpcoming.nombre}: ${formatDate(nextUpcoming.fecha)}` : "Sin plazos próximos"}
                             </p>
-                            {caseData.plazos && caseData.plazos.length > 1 && (
+                            {caseData.plazos && caseData.plazos.length > 1 && nextUpcoming && (
                               <p className="text-xs text-muted-foreground">+{caseData.plazos.length - 1} más</p>
                             )}
                           </div>
@@ -330,9 +439,10 @@ export default function CasosPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-32">Alertas</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Expediente</TableHead>
-                    <TableHead>Caso</TableHead>
+                    <TableHead>Carátula</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Próximo Plazo</TableHead>
@@ -342,32 +452,55 @@ export default function CasosPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredCases.map((caseData) => {
-                    const nextDeadline = getNextOrOverdueDeadline(caseData.plazos)
-                    const isOverdue = hasOverdueDeadline(caseData.plazos)
-                    const totalDeadlines = caseData.plazos?.length || 0
+                    const nextUpcoming = getNextUpcomingDeadline(caseData.plazos)
+                    const alertStatus = getCaseAlertStatus(caseData.plazos)
+                    const pendingOficio = hasPendingOficio(caseData.oficios)
+                    const pendingTarea = hasPendingTarea(caseData.tareas)
 
                     return (
                       <TableRow key={caseData.id} className="hover:bg-muted/50">
                         <TableCell>
+                          <div className="flex items-center gap-1">
+                            {alertStatus === "overdue" && (
+                              <span title="Plazos vencidos">
+                                <AlertCircle className="h-5 w-5 text-destructive" />
+                              </span>
+                            )}
+                            {alertStatus === "soon" && (
+                              <span title="Plazo próximo">
+                                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                              </span>
+                            )}
+                            {pendingOficio && (
+                              <span title="Oficios pendientes">
+                                <FileIcon className="h-5 w-5 text-orange-600" />
+                              </span>
+                            )}
+                            {pendingTarea && (
+                              <span title="Tareas pendientes">
+                                <CheckSquare className="h-5 w-5 text-blue-600" />
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <Badge variant="outline">{caseData.tipo}</Badge>
                         </TableCell>
                         <TableCell className="font-mono text-sm">{caseData.expediente || "-"}</TableCell>
-                        <TableCell className="font-medium max-w-[200px] truncate">{caseData.nombre}</TableCell>
+                        <TableCell className="font-medium max-w-[250px] truncate">{caseData.caratula}</TableCell>
                         <TableCell>{caseData.clienteNombre || "-"}</TableCell>
                         <TableCell>{caseData.estado || "-"}</TableCell>
                         <TableCell>
-                          {nextDeadline ? (
+                          {nextUpcoming ? (
                             <div className="space-y-1">
-                              <p className={cn("font-medium", isOverdue && "text-destructive")}>
-                                {nextDeadline.nombre}
-                              </p>
-                              <p className={cn("text-sm", isOverdue && "text-destructive")}>
-                                {formatDate(nextDeadline.fecha)}
-                                {totalDeadlines > 1 && ` (+${totalDeadlines - 1} más)`}
+                              <p className="font-medium">{nextUpcoming.nombre}</p>
+                              <p className={cn("text-sm", alertStatus === "soon" && "text-orange-500")}>
+                                {formatDate(nextUpcoming.fecha)}
+                                {caseData.plazos && caseData.plazos.length > 1 && ` (+${caseData.plazos.length - 1} más)`}
                               </p>
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">Sin plazos</span>
+                            <span className="text-muted-foreground">Sin plazos próximos</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -434,7 +567,7 @@ export default function CasosPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Eliminar caso?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta acción es permanente. El caso <strong>{caseToDelete?.nombre}</strong> se eliminará para siempre.
+                Esta acción es permanente. El caso <strong>{caseToDelete?.caratula}</strong> se eliminará para siempre.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

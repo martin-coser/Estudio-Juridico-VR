@@ -15,10 +15,26 @@ export interface Plazo {
   fecha: string              
 }
 
+export type Oficio = {
+  id: string
+  titulo: string
+  descripcion?: string
+  fechaEntrega?: string
+  entregado: boolean
+}
+
+export type Tarea = {
+  id: string
+  titulo: string
+  descripcion?: string
+  fechaEntrega?: string
+  entregado: boolean
+}
+
 export interface Case {
   id: string
-  tipo: "SRT" | "ART" | "FAMILIA" | "LABORAL DESPIDOS" | "DAÑOS Y PERJUICIOS"
-  nombre: string
+  tipo?: "SRT" | "ART" | "FAMILIA" | "LABORAL DESPIDOS" | "DAÑOS Y PERJUICIOS" | "OTRO"  
+  caratula: string
   clienteId: string
   clienteNombre?: string
   patologia?: string
@@ -27,10 +43,11 @@ export interface Case {
   homologacionSentencia?: string
   nombreCaso?: string
   tipoProceso?: string
-  motivo?: string
+  descripcion?: string
   localidad?: string
-  dependencia?: string
-  plazos: Plazo[]          
+  plazos: Plazo[]     
+  oficios?: Oficio[]
+  tareas?: Tarea[]     
   estadoPago: "Pagado" | "Debe"
   createdAt: number
 }

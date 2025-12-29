@@ -46,6 +46,16 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
 
   const { toast } = useToast()
 
+  // Fecha de hoy en formato YYYY-MM-DD (para comparación)
+  const today = new Date().toISOString().split("T")[0]
+
+  // Determinar si la fecha seleccionada es anterior a hoy
+  const isPastDate = formData.fecha && formData.fecha < today
+  // Si estamos editando un evento pasado, permitimos solo visualizar (no guardar cambios)
+  const isEditingPastEvent = event && event.fecha < today
+  // Bloquear guardado si: es nuevo y fecha pasada, o es edición de evento pasado
+  const disableSave = isPastDate || isEditingPastEvent
+
   useEffect(() => {
     if (open) {
       fetchClients()
@@ -61,7 +71,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
         setFormData({
           titulo: "",
           descripcion: "",
-          fecha: defaultDate || "",
+          fecha: defaultDate || today, // Por defecto hoy
           hora: "",
           clienteId: "none",
         })
@@ -86,6 +96,26 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Bloqueo adicional por si alguien fuerza el envío
+    if (disableSave && !event) {
+      toast({
+        title: "Fecha inválida",
+        description: "No se pueden crear eventos en fechas pasadas.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (isEditingPastEvent) {
+      toast({
+        title: "No permitido",
+        description: "No se pueden modificar eventos de fechas pasadas.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -140,7 +170,11 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
             {event ? "Editar Evento" : "Nuevo Evento"}
           </DialogTitle>
           <DialogDescription className="text-base">
-            {event ? "Modifica los detalles del evento" : "Programa un nuevo evento en la agenda"}
+            {event
+              ? isEditingPastEvent
+                ? "Este evento es de una fecha pasada. Solo puedes visualizarlo."
+                : "Modifica los detalles del evento"
+              : "Programa un nuevo evento en la agenda"}
           </DialogDescription>
         </DialogHeader>
 
@@ -157,6 +191,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
               required
               placeholder="Ej: Audiencia con Juzgado N°5"
               className="h-12 text-base"
+              disabled={isEditingPastEvent}
             />
           </div>
 
@@ -171,6 +206,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
               placeholder="Detalles, notas o recordatorios..."
               rows={4}
               className="text-base"
+              disabled={isEditingPastEvent}
             />
           </div>
 
@@ -185,8 +221,13 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
                 value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                 required
+                min={today} // ¡Importante! Bloquea fechas anteriores en el selector nativo
                 className="h-12"
+                disabled={isEditingPastEvent}
               />
+              {isPastDate && !event && (
+                <p className="text-sm text-destructive">No se permiten eventos en fechas pasadas.</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -200,6 +241,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
                 onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
                 required
                 className="h-12"
+                disabled={isEditingPastEvent}
               />
             </div>
           </div>
@@ -211,6 +253,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
             <Select
               value={formData.clienteId}
               onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
+              disabled={isEditingPastEvent}
             >
               <SelectTrigger className="h-12 text-base">
                 <SelectValue placeholder="Seleccionar cliente" />
@@ -237,15 +280,21 @@ export function EventDialog({ open, onOpenChange, event, onSuccess, defaultDate 
               disabled={loading}
               className="h-12 order-2 sm:order-1"
             >
-              Cancelar
+              {isEditingPastEvent ? "Cerrar" : "Cancelar"}
             </Button>
             <Button
-              type="submit"
-              disabled={loading}
-              onClick={handleSubmit} // Necesario porque el botón está fuera del form
+              type={disableSave ? "button" : "submit"}
+              disabled={loading || disableSave}
+              onClick={disableSave ? undefined : handleSubmit}
               className="h-12 font-medium order-1 sm:order-2 bg-primary hover:bg-primary/90"
             >
-              {loading ? "Guardando..." : event ? "Actualizar Evento" : "Crear Evento"}
+              {loading
+                ? "Guardando..."
+                : isEditingPastEvent
+                  ? "No se puede modificar"
+                  : event
+                    ? "Actualizar Evento"
+                    : "Crear Evento"}
             </Button>
           </div>
         </div>
