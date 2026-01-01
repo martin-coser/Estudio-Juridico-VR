@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   Stethoscope,
   ScrollText,
+  Circle,
+  Power,
 } from "lucide-react"
 
 // === UTILIDADES DE FECHA SEGURAS ===
@@ -135,10 +137,23 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
               </div>
 
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="px-3 py-1">
-                  {caseData.estado || "Activo"}
-                </Badge>
+                <Power className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado</p>
+                  <Badge 
+                    variant="outline"
+                    className={`
+                      px-3 py-1 font-medium
+                      ${caseData.estado === "Activo" 
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800" 
+                        : "border-gray-300 bg-gray-100 text-gray-700"}
+                    `}
+                  >
+                    {caseData.estado || "Activo"}
+                  </Badge>
+                </div>
               </div>
+
             </div>
 
             {caseData.nombreCaso && (
