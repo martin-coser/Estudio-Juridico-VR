@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth } from "firebase/auth"
+import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 
 const firebaseConfig = {
@@ -13,6 +13,16 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+
+// Configuramos la persistencia a "sesión" → se cierra al cerrar la ventana/app
+setPersistence(getAuth(app), browserSessionPersistence)
+  .then(() => {
+    console.log("[Firebase] Persistencia configurada a: browserSessionPersistence (cierra sesión al cerrar la app)")
+  })
+  .catch((error) => {
+    console.error("[Firebase] Error al configurar persistencia:", error)
+  })
+
 const auth = getAuth(app)
 const db = getFirestore(app)
 

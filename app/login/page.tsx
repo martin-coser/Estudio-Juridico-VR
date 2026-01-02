@@ -10,13 +10,17 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Scale } from "lucide-react"
+import { setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth"
+import { auth } from "@/lib/firebase"   
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)  
   const [isRegister, setIsRegister] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
   const { signIn, signUp, signInWithGoogle } = useAuth()
   const router = useRouter()
 
@@ -26,11 +30,17 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // 1. Configuramos la persistencia ANTES del login/registro
+      const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
+      await setPersistence(auth, persistence)
+
+      // 2. Ejecutamos el login o registro
       if (isRegister) {
         await signUp(email, password)
       } else {
         await signIn(email, password)
       }
+
       router.push("/")
     } catch (err: any) {
       setError(err.message || "Ocurrió un error")
@@ -44,6 +54,10 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // Aplicamos la misma persistencia también al login con Google
+      const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
+      await setPersistence(auth, persistence)
+
       await signInWithGoogle()
       router.push("/")
     } catch (err: any) {
@@ -117,6 +131,24 @@ export default function LoginPage() {
                 />
               </div>
 
+              {/* Checkbox "Mantener sesión iniciada" */}
+              <div className="flex items-center space-x-2">
+                <input
+                  id="rememberMe"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  disabled={loading}
+                />
+                <Label
+                  htmlFor="rememberMe"
+                  className="text-sm font-medium leading-none text-muted-foreground cursor-pointer"
+                >
+                  Mantener sesión iniciada
+                </Label>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent shadow-lg"
@@ -149,7 +181,6 @@ export default function LoginPage() {
                 }
               </button>
             </div>
-
           </CardContent>
         </Card>
       </div>
