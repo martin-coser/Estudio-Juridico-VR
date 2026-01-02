@@ -15,7 +15,7 @@ export async function POST(request: Request) {
         notification: {
           title: titulo,
           body: mensaje,
-          deep_link: link || "https://estudiojuridico-vr.web.app/",
+          icon: "https://tu-app-en-render.onrender.com/balanza.jpg",
         },
       },
     });
