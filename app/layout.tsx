@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/hooks/use-auth"
 import { Toaster } from "@/components/ui/toaster"
+import PusherBeamsInit from "@/components/PusherBeamsInit";
 import "./globals.css"
 
 const geistSans = Geist({
@@ -51,8 +52,10 @@ export default function RootLayout({
         h-full bg-background font-sans antialiased
         ${geistSans.variable} ${geistMono.variable}
       `}>
+        <PusherBeamsInit />
         <AuthProvider>
           <div className="flex flex-col h-full">
+            <script src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"></script>
             {children}
           </div>
           <Toaster />
