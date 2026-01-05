@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import PushNotifications from "@pusher/push-notifications-server";
 
-// Inicialización del Admin SDK
+// 1. Inicialización del Admin SDK
 if (!admin.apps.length) {
   try {
     const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -11,10 +11,8 @@ if (!admin.apps.length) {
       throw new Error("Variable FIREBASE_SERVICE_ACCOUNT_JSON no encontrada");
     }
 
-    // Parseamos el JSON
     const serviceAccount = JSON.parse(rawJson);
 
-    // IMPORTANTE: Corregimos los saltos de línea de la clave privada
     if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
     }
@@ -29,7 +27,7 @@ if (!admin.apps.length) {
   }
 }
 
-const db = admin.firestore()
+const db = admin.firestore();
 
 // 2. Cliente de Pusher Beams
 const beamsClient = new PushNotifications({
@@ -39,42 +37,48 @@ const beamsClient = new PushNotifications({
 
 export async function GET() {
   try {
-    const ahora = admin.firestore.Timestamp.now();
-    const ahoraDate = ahora.toDate();
-    const LIMITE_3_DIAS = 3 * 24 * 60 * 60 * 1000;
-    const limiteTs = admin.firestore.Timestamp.fromDate(new Date(ahoraDate.getTime() + LIMITE_3_DIAS));
+    const ahoraDate = new Date();
+    const LIMITE_3_DIAS_MS = 3 * 24 * 60 * 60 * 1000;
+    const tiempoAhora = ahoraDate.getTime();
+    const tiempoLimite = tiempoAhora + LIMITE_3_DIAS_MS;
 
     let totalEnviadas = 0;
 
-    // --- 1. PROCESAR CASES ---
+    // --- 1. PROCESAR CASES (PLAZOS, OFICIOS, TAREAS) ---
     const casesSnapshot = await db.collection('cases').get();
 
     for (const caseDoc of casesSnapshot.docs) {
       const caso = caseDoc.data();
       const expediente = caso.expediente || 'S/N';
 
-      // PLAZOS
+      // --- PLAZOS (Dentro del array 'plazos') ---
       const plazos = caso.plazos || [];
       for (const plazo of plazos) {
         if (plazo.fecha) {
-          const fVto = plazo.fecha as admin.firestore.Timestamp;
-          if (fVto <= limiteTs && fVto >= ahora) {
+          // Convertimos el string "2026-01-06" a fecha real
+          const fechaPlazo = new Date(plazo.fecha);
+          const tiempoPlazo = fechaPlazo.getTime();
+
+          // Filtro: vence en los próximos 3 días y no ha pasado hace más de 24hs
+          if (tiempoPlazo <= tiempoLimite && tiempoPlazo >= (tiempoAhora - 86400000)) {
             await beamsClient.publishToInterests(["hello"], {
-              web: { notification: {
-                title: '🔴 PLAZO PRÓXIMO',
-                body: `${plazo.descripcion || 'Vencimiento'} - Exp: ${expediente}`,
-                deep_link: `https://tu-app.vercel.app/cases/${caseDoc.id}`
-              }}
+              web: { 
+                notification: {
+                  title: '🔴 PLAZO PRÓXIMO',
+                  body: `${plazo.descripcion || 'Vencimiento'} - Exp: ${expediente}`,
+                  deep_link: `https://tu-app.vercel.app/cases/${caseDoc.id}`
+                }
+              }
             });
             totalEnviadas++;
           }
         }
       }
 
-      // OFICIOS
+      // --- OFICIOS ---
       const oficios = caso.oficios || [];
       for (const oficio of oficios) {
-        if (!oficio.completado) {
+        if (oficio.completado === false) { // Verificación explícita de pendiente
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '📂 OFICIO PENDIENTE',
@@ -85,10 +89,10 @@ export async function GET() {
         }
       }
 
-      // TAREAS
+      // --- TAREAS ---
       const tareas = caso.tareas || [];
       for (const tarea of tareas) {
-        if (!tarea.completado) {
+        if (tarea.completado === false) {
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '✅ TAREA PENDIENTE',
@@ -100,27 +104,40 @@ export async function GET() {
       }
     }
 
-    // --- 2. PROCESAR EVENTOS ---
-    const eventsSnapshot = await db.collection('events')
-      .where('fecha', '<=', limiteTs)
-      .where('fecha', '>=', ahora)
-      .get();
+    // --- 2. PROCESAR EVENTOS (AGENDA) ---
+    // Traemos los eventos y filtramos manualmente porque son Strings
+    const eventsSnapshot = await db.collection('events').get();
 
     for (const eventDoc of eventsSnapshot.docs) {
       const evento = eventDoc.data();
-      await beamsClient.publishToInterests(["hello"], {
-        web: { notification: {
-          title: '📅 EVENTO EN AGENDA',
-          body: evento.titulo || 'Sin título'
-        }}
-      });
-      totalEnviadas++;
+      
+      if (evento.fecha) {
+        const fechaEvento = new Date(evento.fecha);
+        const tiempoEvento = fechaEvento.getTime();
+
+        if (tiempoEvento <= tiempoLimite && tiempoEvento >= (tiempoAhora - 86400000)) {
+          await beamsClient.publishToInterests(["hello"], {
+            web: { 
+              notification: {
+                title: '📅 EVENTO EN AGENDA',
+                body: evento.titulo || 'Sin título',
+                deep_link: `https://tu-app.vercel.app/calendar`
+              }
+            }
+          });
+          totalEnviadas++;
+        }
+      }
     }
 
-    return NextResponse.json({ success: true, enviadas: totalEnviadas });
+    return NextResponse.json({ 
+      success: true, 
+      enviadas: totalEnviadas,
+      timestamp: ahoraDate.toISOString() 
+    });
 
   } catch (error: any) {
-    console.error('Error detallado:', error);
+    console.error(' Error detallado:', error);
     return NextResponse.json({ 
       error: 'Error en el servidor', 
       message: error.message 
