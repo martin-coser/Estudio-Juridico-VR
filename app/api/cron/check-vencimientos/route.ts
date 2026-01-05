@@ -59,7 +59,7 @@ export async function GET() {
         if (plazo.fechaVencimiento) {
           const fVto = plazo.fechaVencimiento as admin.firestore.Timestamp;
           if (fVto <= limiteTs && fVto >= ahora) {
-            await beamsClient.publishToInterests(["global"], {
+            await beamsClient.publishToInterests(["hello"], {
               web: { notification: {
                 title: '🔴 PLAZO PRÓXIMO',
                 body: `${plazo.descripcion || 'Vencimiento'} - Exp: ${expediente}`,
@@ -75,7 +75,7 @@ export async function GET() {
       const oficios = caso.oficios || [];
       for (const oficio of oficios) {
         if (!oficio.completado) {
-          await beamsClient.publishToInterests(["global"], {
+          await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '📂 OFICIO PENDIENTE',
               body: `Exp: ${expediente}`
@@ -89,7 +89,7 @@ export async function GET() {
       const tareas = caso.tareas || [];
       for (const tarea of tareas) {
         if (!tarea.completado) {
-          await beamsClient.publishToInterests(["global"], {
+          await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '✅ TAREA PENDIENTE',
               body: `${tarea.descripcion || 'Tarea'} - Exp: ${expediente}`
@@ -108,7 +108,7 @@ export async function GET() {
 
     for (const eventDoc of eventsSnapshot.docs) {
       const evento = eventDoc.data();
-      await beamsClient.publishToInterests(["global"], {
+      await beamsClient.publishToInterests(["hello"], {
         web: { notification: {
           title: '📅 EVENTO EN AGENDA',
           body: evento.titulo || 'Sin título'
