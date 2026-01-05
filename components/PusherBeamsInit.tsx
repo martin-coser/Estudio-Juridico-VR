@@ -7,7 +7,7 @@ export default function PusherBeamsInit() {
   useEffect(() => {
     // Esta lógica solo se ejecuta en el navegador
     const beamsClient = new PusherPushNotifications.Client({
-      instanceId: '65b8c8e3-d6de-4962-a65d-e1aa4c9da788',
+      instanceId: '57304e07-5191-48ad-98ac-17abe9b14057',
     });
 
     beamsClient.start()
