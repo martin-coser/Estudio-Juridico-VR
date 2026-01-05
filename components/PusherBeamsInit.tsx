@@ -7,11 +7,11 @@ export default function PusherBeamsInit() {
   useEffect(() => {
     // Esta lógica solo se ejecuta en el navegador
     const beamsClient = new PusherPushNotifications.Client({
-      instanceId: 'f5c55e0f-9377-4115-9924-38f5671a61f4',
+      instanceId: '65b8c8e3-d6de-4962-a65d-e1aa4c9da788',
     });
 
     beamsClient.start()
-      .then(() => beamsClient.addDeviceInterest('global'))
+      .then(() => beamsClient.addDeviceInterest('hello'))
       .then(() => console.log('Successfully registered and subscribed!'))
       .catch(console.error);
   }, []);
