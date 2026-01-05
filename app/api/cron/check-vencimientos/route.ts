@@ -56,8 +56,8 @@ export async function GET() {
       // PLAZOS
       const plazos = caso.plazos || [];
       for (const plazo of plazos) {
-        if (plazo.fechaVencimiento) {
-          const fVto = plazo.fechaVencimiento as admin.firestore.Timestamp;
+        if (plazo.fecha) {
+          const fVto = plazo.fecha as admin.firestore.Timestamp;
           if (fVto <= limiteTs && fVto >= ahora) {
             await beamsClient.publishToInterests(["hello"], {
               web: { notification: {
