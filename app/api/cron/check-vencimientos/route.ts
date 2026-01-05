@@ -51,52 +51,45 @@ export async function GET() {
       const caso = caseDoc.data();
       const expediente = caso.expediente || 'S/N';
 
-      // --- PLAZOS (Dentro del array 'plazos') ---
+      // PLAZOS: Se envían si están en fecha
       const plazos = caso.plazos || [];
       for (const plazo of plazos) {
         if (plazo.fecha) {
-          // Convertimos el string "2026-01-06" a fecha real
           const fechaPlazo = new Date(plazo.fecha);
-          const tiempoPlazo = fechaPlazo.getTime();
-
-          // Filtro: vence en los próximos 3 días y no ha pasado hace más de 24hs
-          if (tiempoPlazo <= tiempoLimite && tiempoPlazo >= (tiempoAhora - 86400000)) {
+          if (fechaPlazo.getTime() <= tiempoLimite && fechaPlazo.getTime() >= (tiempoAhora - 86400000)) {
             await beamsClient.publishToInterests(["hello"], {
-              web: { 
-                notification: {
-                  title: '🔴 PLAZO PRÓXIMO',
-                  body: `${plazo.descripcion || 'Vencimiento'} - Exp: ${expediente}`,
-                  deep_link: `https://tu-app.vercel.app/cases/${caseDoc.id}`
-                }
-              }
+              web: { notification: {
+                title: '🔴 PLAZO PRÓXIMO',
+                body: `${plazo.nombre || 'Vencimiento'} (Fecha: ${plazo.fecha}) - Exp: ${expediente}`,
+              }}
             });
             totalEnviadas++;
           }
         }
       }
 
-      // --- OFICIOS ---
+      // OFICIOS: Se envían todos los NO completados
       const oficios = caso.oficios || [];
       for (const oficio of oficios) {
-        if (oficio.completado === false) { // Verificación explícita de pendiente
+        if (!oficio.completado) { // Detecta false, null o undefined
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '📂 OFICIO PENDIENTE',
-              body: `Exp: ${expediente}`
+              body: `Exp: ${expediente}`,
             }}
           });
           totalEnviadas++;
         }
       }
 
-      // --- TAREAS ---
+      // TAREAS: Se envían todas las NO completadas
       const tareas = caso.tareas || [];
       for (const tarea of tareas) {
-        if (tarea.completado === false) {
+        if (!tarea.completado) { // Detecta false, null o undefined
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '✅ TAREA PENDIENTE',
-              body: `${tarea.descripcion || 'Tarea'} - Exp: ${expediente}`
+              body: `${tarea.descripcion || 'Tarea'} - Exp: ${expediente}`,
             }}
           });
           totalEnviadas++;
@@ -105,42 +98,26 @@ export async function GET() {
     }
 
     // --- 2. PROCESAR EVENTOS (AGENDA) ---
-    // Traemos los eventos y filtramos manualmente porque son Strings
     const eventsSnapshot = await db.collection('events').get();
-
     for (const eventDoc of eventsSnapshot.docs) {
       const evento = eventDoc.data();
-      
       if (evento.fecha) {
-        const fechaEvento = new Date(evento.fecha);
-        const tiempoEvento = fechaEvento.getTime();
-
-        if (tiempoEvento <= tiempoLimite && tiempoEvento >= (tiempoAhora - 86400000)) {
+        const fechaEv = new Date(evento.fecha);
+        if (fechaEv.getTime() <= tiempoLimite && fechaEv.getTime() >= (tiempoAhora - 86400000)) {
           await beamsClient.publishToInterests(["hello"], {
-            web: { 
-              notification: {
-                title: '📅 EVENTO EN AGENDA',
-                body: evento.titulo || 'Sin título',
-                deep_link: `https://tu-app.vercel.app/calendar`
-              }
-            }
+            web: { notification: {
+              title: '📅 EVENTO EN AGENDA',
+              body: `${evento.titulo || 'Sin título'} (Fecha: ${evento.fecha})`,
+            }}
           });
           totalEnviadas++;
         }
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      enviadas: totalEnviadas,
-      timestamp: ahoraDate.toISOString() 
-    });
+    return NextResponse.json({ success: true, enviadas: totalEnviadas });
 
   } catch (error: any) {
-    console.error(' Error detallado:', error);
-    return NextResponse.json({ 
-      error: 'Error en el servidor', 
-      message: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
