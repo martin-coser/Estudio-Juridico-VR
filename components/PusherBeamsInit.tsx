@@ -11,7 +11,7 @@ export default function PusherBeamsInit() {
     });
 
     beamsClient.start()
-      .then(() => beamsClient.addDeviceInterest('hello'))
+      .then(() => beamsClient.addDeviceInterest('global'))
       .then(() => console.log('Successfully registered and subscribed!'))
       .catch(console.error);
   }, []);
