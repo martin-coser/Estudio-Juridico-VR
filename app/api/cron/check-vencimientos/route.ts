@@ -79,6 +79,7 @@ export async function GET() {
             web: { notification: {
               title: '📂 OFICIO PENDIENTE',
               body: `Exp: ${expediente}`,
+              icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg',
             }}
           });
           totalEnviadas++;
@@ -93,6 +94,7 @@ export async function GET() {
             web: { notification: {
               title: '✅ TAREA PENDIENTE',
               body: `${tarea.descripcion || 'Tarea'} - Exp: ${expediente}`,
+              icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg',
             }}
           });
           totalEnviadas++;
@@ -112,6 +114,7 @@ export async function GET() {
             web: { notification: {
               title: '📅 EVENTO EN AGENDA',
               body: `${evento.titulo || 'Sin título'} (Fecha: ${fechaFormateada})`,
+              icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg',
             }}
           });
           totalEnviadas++;
