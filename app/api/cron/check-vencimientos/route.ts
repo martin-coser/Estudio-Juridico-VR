@@ -63,7 +63,7 @@ export async function GET() {
               web: { notification: {
                 title: '🔴 PLAZO PRÓXIMO',
                 body: `${plazo.nombre || 'Vencimiento'} (Fecha: ${fechaFormateada}) - Exp: ${expediente}`,
-                icon: 'https://estudiojuridico-vr.web.app/balanza.jpg',
+                icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg',
               }}
             });
             totalEnviadas++;
