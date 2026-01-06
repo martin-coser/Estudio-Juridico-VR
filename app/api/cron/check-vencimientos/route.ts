@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import PushNotifications from "@pusher/push-notifications-server";
+import { formatDate } from '@/lib/formatDate';
 
 // 1. Inicialización del Admin SDK
 if (!admin.apps.length) {
@@ -57,10 +58,12 @@ export async function GET() {
         if (plazo.fecha) {
           const fechaPlazo = new Date(plazo.fecha);
           if (fechaPlazo.getTime() <= tiempoLimite && fechaPlazo.getTime() >= (tiempoAhora - 86400000)) {
+            const fechaFormateada = formatDate(plazo.fecha);
             await beamsClient.publishToInterests(["hello"], {
               web: { notification: {
                 title: '🔴 PLAZO PRÓXIMO',
-                body: `${plazo.nombre || 'Vencimiento'} (Fecha: ${plazo.fecha}) - Exp: ${expediente}`,
+                body: `${plazo.nombre || 'Vencimiento'} (Fecha: ${fechaFormateada}) - Exp: ${expediente}`,
+                icon: 'https://estudiojuridico-vr.web.app/balanza.jpg',
               }}
             });
             totalEnviadas++;
@@ -104,10 +107,11 @@ export async function GET() {
       if (evento.fecha) {
         const fechaEv = new Date(evento.fecha);
         if (fechaEv.getTime() <= tiempoLimite && fechaEv.getTime() >= (tiempoAhora - 86400000)) {
+          const fechaFormateada = formatDate(evento.fecha);
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '📅 EVENTO EN AGENDA',
-              body: `${evento.titulo || 'Sin título'} (Fecha: ${evento.fecha})`,
+              body: `${evento.titulo || 'Sin título'} (Fecha: ${fechaFormateada})`,
             }}
           });
           totalEnviadas++;
