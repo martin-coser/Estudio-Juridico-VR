@@ -3,12 +3,17 @@
 import { AppLayout } from "@/components/app-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, Briefcase, CalendarIcon } from "lucide-react"
+import { Button } from "@/components/ui/button" // Asegúrate de tener este import
+import { AlertCircle, Briefcase, CalendarIcon, Users, Key, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
 import type { Case, Event } from "@/lib/types"
+import Link from "next/link"
+
+// Tu UID de Administrador
+const ADMIN_UID = "SWuK09UZJ5fJ6YSPtcNFDVRePbV2"; 
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -18,6 +23,9 @@ export default function DashboardPage() {
     eventosHoy: 0,
   })
   const [loading, setLoading] = useState(true)
+
+  // Verificamos si es administrador
+  const isAdmin = user?.uid === ADMIN_UID;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -31,7 +39,6 @@ export default function DashboardPage() {
         let proximosVencimientos = 0
         let eventosHoy = 0
 
-        // === 1. CARGAR CASOS (para casos activos y vencimientos) ===
         const casesQuery = query(collection(db, "cases"))
         const casesSnap = await getDocs(casesQuery)
         casosActivos = casesSnap.size
@@ -43,8 +50,6 @@ export default function DashboardPage() {
 
         casesSnap.forEach((doc) => {
           const caso = doc.data() as Case
-
-          // Contar plazos próximos (múltiples por caso)
           if (caso.plazos && caso.plazos.length > 0) {
             caso.plazos.forEach((plazo) => {
               if (!plazo.fecha) return
@@ -56,9 +61,7 @@ export default function DashboardPage() {
           }
         })
 
-        // === 2. CARGAR EVENTOS DE HOY ===
-        const todayStr = today.toISOString().split("T")[0] // formato YYYY-MM-DD
-
+        const todayStr = today.toISOString().split("T")[0]
         const eventsQuery = query(
           collection(db, "events"),
           where("fecha", "==", todayStr)
@@ -72,7 +75,7 @@ export default function DashboardPage() {
           eventosHoy,
         })
       } catch (error) {
-        console.error("[v0] Error fetching dashboard stats:", error)
+        console.error("Error fetching dashboard stats:", error)
       } finally {
         setLoading(false)
       }
@@ -94,31 +97,49 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {/* Título y descripción */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            Dashboard
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Resumen de actividades del estudio jurídico
-          </p>
+        
+        {/* Encabezado con botón de solicitudes para el ADMIN */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              Dashboard
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Resumen de actividades del estudio jurídico
+            </p>
+          </div>
+          
+          {isAdmin && (
+            <Link href="/admin-solicitudes">
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md flex gap-2 h-11 px-6">
+                <Users className="h-5 w-5" />
+                Solicitudes de Registro
+                <ChevronRight className="h-4 w-4 opacity-50" />
+              </Button>
+            </Link>
+          )}
         </div>
 
-        {/* Alertas permanentes */}
-        <div className="grid gap-4 mb-8 sm:grid-cols-1 md:grid-cols-2">
-          <Alert className="border-amber-500/50 bg-amber-500/10">
-            <AlertCircle className="h-5 w-5 text-amber-500" />
-            <AlertTitle className="text-amber-500">Recordatorio Importante</AlertTitle>
-            <AlertDescription className="text-foreground">
-              Recordar verificar oficios
+        {/* Alertas de seguridad (Password) y Recordatorios */}
+        <div className="grid gap-4 mb-8 grid-cols-1 md:grid-cols-2">
+          
+          {/* Solo mostramos esta alerta si el usuario no ha puesto su contraseña o queremos recordárselo */}
+          <Alert className="border-blue-500/50 bg-blue-500/10">
+            <Key className="h-5 w-5 text-blue-500" />
+            <AlertTitle className="text-blue-500">Configuración de Seguridad</AlertTitle>
+            <AlertDescription className="text-foreground flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <span>Para mayor seguridad, asegúrese de tener una contraseña establecida.</span>
+              <Button variant="outline" size="sm" className="h-8 border-blue-500/50 hover:bg-blue-500/20" asChild>
+                <Link href="/ajustes-seguridad">Configurar</Link>
+              </Button>
             </AlertDescription>
           </Alert>
 
           <Alert className="border-amber-500/50 bg-amber-500/10">
             <AlertCircle className="h-5 w-5 text-amber-500" />
-            <AlertTitle className="text-amber-500">Recordatorio Importante</AlertTitle>
+            <AlertTitle className="text-amber-500">Control SAC / Oficios</AlertTitle>
             <AlertDescription className="text-foreground">
-              Recordar controlar SAC
+              Verificar oficios pendientes y controlar sistema SAC hoy.
             </AlertDescription>
           </Alert>
         </div>
@@ -136,9 +157,7 @@ export default function DashboardPage() {
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
                 {stats.casosActivos}
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Total de casos en gestión
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground">Total de casos en gestión</p>
             </CardContent>
           </Card>
 
@@ -153,9 +172,7 @@ export default function DashboardPage() {
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
                 {stats.proximosVencimientos}
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Plazos en los próximos 7 días
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground">Plazos en los próximos 7 días</p>
             </CardContent>
           </Card>
 
@@ -170,9 +187,7 @@ export default function DashboardPage() {
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
                 {stats.eventosHoy}
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Reuniones y audiencias programadas
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground">Reuniones y audiencias</p>
             </CardContent>
           </Card>
         </div>
