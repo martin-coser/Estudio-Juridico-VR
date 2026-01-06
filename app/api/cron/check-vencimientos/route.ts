@@ -78,7 +78,7 @@ export async function GET() {
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '📂 OFICIO PENDIENTE',
-              body: `Exp: ${expediente}`,
+              body: `${oficio.titulo || 'Oficio'} - Exp: ${expediente}`,
               icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg',
             }}
           });
@@ -93,7 +93,7 @@ export async function GET() {
           await beamsClient.publishToInterests(["hello"], {
             web: { notification: {
               title: '✅ TAREA PENDIENTE',
-              body: `${tarea.descripcion || 'Tarea'} - Exp: ${expediente}`,
+              body: `${tarea.titulo || 'Tarea'} - Exp: ${expediente}`,
               icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg',
             }}
           });
