@@ -5,7 +5,7 @@ import { AuthProvider } from "@/hooks/use-auth"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 import Script from "next/script"
-import dynamic from "next/dynamic"
+import { ClientProviders } from "@/components/clientProviders"
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -34,20 +34,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const PusherBeamsInit = dynamic(
-  () => import("@/components/PusherBeamsInit"),
-  { ssr: false }
-  )
   return (
     <html lang="es" className="h-full">
       <body className={`
         h-full bg-background font-sans antialiased
         ${geistSans.variable} ${geistMono.variable}
       `}>
-        <PusherBeamsInit />
         <AuthProvider>
           <div className="flex flex-col h-full">
-            {children}
+            <ClientProviders>
+              {children}
+            </ClientProviders>
           </div>
           <Toaster />
         </AuthProvider>
