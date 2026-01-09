@@ -2,18 +2,17 @@
 
 import { AppLayout } from "@/components/app-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button" // Asegúrate de tener este import
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { AlertCircle, Briefcase, CalendarIcon, Users, Key, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
-import type { Case, Event } from "@/lib/types"
+import type { Case } from "@/lib/types"  // Event no se usa directamente aquí
 import Link from "next/link"
 
-// Tu UID de Administrador
-const ADMIN_UID = "SWuK09UZJ5fJ6YSPtcNFDVRePbV2"; 
+const ADMIN_UID = "SWuK09UZJ5fJ6YSPtcNFDVRePbV2"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -22,12 +21,15 @@ export default function DashboardPage() {
     proximosVencimientos: 0,
     eventosHoy: 0,
   })
+  const [isClient, setIsClient] = useState(false)  // ← Nuevo estado para controlar hidratación
   const [loading, setLoading] = useState(true)
 
-  // Verificamos si es administrador
-  const isAdmin = user?.uid === ADMIN_UID;
+  const isAdmin = user?.uid === ADMIN_UID
 
+  // Este effect asegura que solo renderizamos los datos reales después de estar en cliente
   useEffect(() => {
+    setIsClient(true)  // Marca que ya estamos en el cliente
+
     const fetchStats = async () => {
       if (!user) {
         setLoading(false)
@@ -43,14 +45,16 @@ export default function DashboardPage() {
         const casesSnap = await getDocs(casesQuery)
         casosActivos = casesSnap.size
 
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+        // Todo el manejo de fechas ahora es 100% en cliente
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Más robusto que setHours
+        const nextWeek = new Date(today)
+        nextWeek.setDate(today.getDate() + 7)
         nextWeek.setHours(23, 59, 59, 999)
 
         casesSnap.forEach((doc) => {
           const caso = doc.data() as Case
-          if (caso.plazos && caso.plazos.length > 0) {
+          if (caso.plazos?.length) {
             caso.plazos.forEach((plazo) => {
               if (!plazo.fecha) return
               const fechaPlazo = new Date(plazo.fecha)
@@ -61,7 +65,7 @@ export default function DashboardPage() {
           }
         })
 
-        const todayStr = today.toISOString().split("T")[0]
+        const todayStr = today.toISOString().slice(0, 10) // "YYYY-MM-DD"
         const eventsQuery = query(
           collection(db, "events"),
           where("fecha", "==", todayStr)
@@ -84,21 +88,13 @@ export default function DashboardPage() {
     fetchStats()
   }, [user])
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex h-[70vh] items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-t-4 border-b-4 border-primary"></div>
-        </div>
-      </AppLayout>
-    )
-  }
+  // Mientras no estamos hidratados o estamos cargando → skeleton idéntico al dashboard real
+  const showSkeleton = !isClient || loading
 
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Encabezado con botón de solicitudes para el ADMIN */}
+        {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
@@ -108,7 +104,7 @@ export default function DashboardPage() {
               Resumen de actividades del estudio jurídico
             </p>
           </div>
-          
+
           {isAdmin && (
             <Link href="/admin-solicitudes">
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md flex gap-2 h-11 px-6">
@@ -120,10 +116,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Alertas de seguridad (Password) y recordatorios */}
+        {/* Alertas (siempre visibles, no dependen de datos dinámicos) */}
         <div className="grid gap-4 mb-8 grid-cols-1 md:grid-cols-2">
-          
-          {/* Solo mostramos esta alerta si el usuario no ha puesto su contraseña o queremos recordárselo */}
           <Alert className="border-blue-500/50 bg-blue-500/10">
             <Key className="h-5 w-5 text-blue-500" />
             <AlertTitle className="text-blue-500">Configuración de Seguridad</AlertTitle>
@@ -155,7 +149,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
-                {stats.casosActivos}
+                {showSkeleton ? "—" : stats.casosActivos}
               </div>
               <p className="mt-2 text-sm text-muted-foreground">Total de casos en gestión</p>
             </CardContent>
@@ -170,7 +164,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
-                {stats.proximosVencimientos}
+                {showSkeleton ? "—" : stats.proximosVencimientos}
               </div>
               <p className="mt-2 text-sm text-muted-foreground">Plazos en los próximos 7 días</p>
             </CardContent>
@@ -185,12 +179,19 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
-                {stats.eventosHoy}
+                {showSkeleton ? "—" : stats.eventosHoy}
               </div>
               <p className="mt-2 text-sm text-muted-foreground">Reuniones y audiencias</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Spinner centrado solo mientras carga (opcional, queda más limpio sin él) */}
+        {loading && isClient && (
+          <div className="flex justify-center mt-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-t-4 border-b-4 border-primary"></div>
+          </div>
+        )}
       </div>
     </AppLayout>
   )
