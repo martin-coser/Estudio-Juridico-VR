@@ -7,12 +7,6 @@ import "./globals.css"
 import Script from "next/script"
 import dynamic from "next/dynamic"
 
-
-const PusherBeamsInit = dynamic(
-  () => import("@/components/PusherBeamsInit"),
-  { ssr: false }
-)
-
 const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
@@ -40,6 +34,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const PusherBeamsInit = dynamic(
+  () => import("@/components/PusherBeamsInit"),
+  { ssr: false }
+  )
   return (
     <html lang="es" className="h-full">
       <body className={`
