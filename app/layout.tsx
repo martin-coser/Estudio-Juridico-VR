@@ -46,7 +46,6 @@ export default function RootLayout({
               {children}
             </ClientProviders>
           </div>
-          <Toaster />
         </AuthProvider>
         <Analytics />
         <Script
