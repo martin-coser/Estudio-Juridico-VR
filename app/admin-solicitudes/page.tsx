@@ -47,10 +47,9 @@ export default function AdminSolicitudes() {
     setLoadingId(id)
     try {
       const actionCodeSettings = {
-        // La URL a la que irá el usuario al abrir su mail
-        url: `${window.location.origin}/confirmar-acceso`,
+        url: 'https://estudio-juridico-vr.vercel.app/confirmar-acceso', 
         handleCodeInApp: true,
-      }
+      };
 
       // Enviamos link de registro (Plan Spark)
       await sendSignInLinkToEmail(auth, email, actionCodeSettings)

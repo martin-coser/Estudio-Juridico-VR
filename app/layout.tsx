@@ -3,8 +3,15 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/hooks/use-auth"
 import { Toaster } from "@/components/ui/toaster"
-import PusherBeamsInit from "@/components/PusherBeamsInit";
 import "./globals.css"
+import Script from "next/script"
+import dynamic from "next/dynamic"
+
+
+const PusherBeamsInit = dynamic(
+  () => import("@/components/PusherBeamsInit"),
+  { ssr: false }
+)
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -42,12 +49,15 @@ export default function RootLayout({
         <PusherBeamsInit />
         <AuthProvider>
           <div className="flex flex-col h-full">
-            <script src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"></script>
             {children}
           </div>
           <Toaster />
         </AuthProvider>
         <Analytics />
+        <Script
+          src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"
+          strategy="afterInteractive"  
+        />
       </body>
     </html>
   )
