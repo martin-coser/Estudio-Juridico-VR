@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="h-full">
       <head>
-        <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+        <meta name="format-detection" content="telephone=no,date=no,email=no,address=no" />
       </head>
       <body className={`
         h-full bg-background font-sans antialiased
