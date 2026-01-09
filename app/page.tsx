@@ -120,7 +120,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Alertas de seguridad (Password) y Recordatorios */}
+        {/* Alertas de seguridad (Password) y recordatorios */}
         <div className="grid gap-4 mb-8 grid-cols-1 md:grid-cols-2">
           
           {/* Solo mostramos esta alerta si el usuario no ha puesto su contraseña o queremos recordárselo */}
