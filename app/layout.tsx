@@ -45,9 +45,7 @@ export default function RootLayout({
       `}>
         <AuthProvider>
           <div className="flex flex-col h-full">
-            <ClientProviders>
-              {children}
-            </ClientProviders>
+            {children}
           </div>
         </AuthProvider>
         <Analytics />
