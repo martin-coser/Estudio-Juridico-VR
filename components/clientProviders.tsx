@@ -1,14 +1,21 @@
-"use client"
+// components/ClientProviders.tsx
+"use client";
 
-import PusherBeamsInit from "@/components/PusherBeamsInit"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
+import dynamic from "next/dynamic";
+
+// Carga PusherBeamsInit solo en el cliente, nunca en el servidor
+const PusherBeamsInit = dynamic(
+  () => import("@/components/PusherBeamsInit"),
+  { ssr: false }
+);
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PusherBeamsInit />  {/* Se inicializa solo en cliente */}
+      <PusherBeamsInit />
       {children}
-      <Toaster />          {/* Toasts también suelen necesitar cliente */}
+      <Toaster />
     </>
-  )
+  );
 }

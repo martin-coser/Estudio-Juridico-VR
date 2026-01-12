@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as PusherPushNotifications from "@pusher/push-notifications-web";
 
 let beamsClient: any = null;
 
@@ -26,18 +25,23 @@ export default function PusherBeamsInit() {
       return;
     }
 
-    // Crear cliente (pero NO iniciar aún)
-    beamsClient = new PusherPushNotifications.Client({
-      instanceId: "57304e07-5191-48ad-98ac-17abe9b14057",
-    });
+    // ✅ Importar la librería SOLO en el cliente y SOLO cuando se necesita
+    import("@pusher/push-notifications-web")
+      .then((PusherPushNotifications) => {
+        beamsClient = new PusherPushNotifications.Client({
+          instanceId: "57304e07-5191-48ad-98ac-17abe9b14057",
+        });
+      })
+      .catch((err) => {
+        console.error("Error al cargar Pusher SDK:", err);
+      });
   }, []);
 
   // Esta función se llamará cuando el usuario haga clic en "Activar Notificaciones"
-  window.initPushNotifications = async () => {
+  (window as any).initPushNotifications = async () => {
     if (!beamsClient || !isSupported) return false;
 
     try {
-      // Pedir permiso solo tras interacción
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         console.log("Permiso de notificaciones denegado.");
