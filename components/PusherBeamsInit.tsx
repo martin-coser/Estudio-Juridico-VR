@@ -1,20 +1,58 @@
-"use client"; // Obligatorio para usar useEffect y el SDK de Pusher
+// components/PusherBeamsInit.tsx
+"use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as PusherPushNotifications from "@pusher/push-notifications-web";
 
-export default function PusherBeamsInit() {
-  useEffect(() => {
-    // Esta lógica solo se ejecuta en el navegador
-    const beamsClient = new PusherPushNotifications.Client({
-      instanceId: '57304e07-5191-48ad-98ac-17abe9b14057',
-    });
+let beamsClient: any = null;
 
-    beamsClient.start()
-      .then(() => beamsClient.addDeviceInterest('hello'))
-      .then(() => console.log('Successfully registered and subscribed!'))
-      .catch(console.error);
+export default function PusherBeamsInit() {
+  const [isSupported, setIsSupported] = useState(false);
+
+  useEffect(() => {
+    // Verificar que estamos en navegador
+    if (typeof window === "undefined") return;
+
+    // Verificar soporte básico
+    const supported =
+      "serviceWorker" in navigator &&
+      "Notification" in window &&
+      location.protocol === "https:";
+
+    setIsSupported(supported);
+
+    if (!supported) {
+      console.warn("Notificaciones push no soportadas en este entorno.");
+      return;
+    }
+
+    // Crear cliente (pero NO iniciar aún)
+    beamsClient = new PusherPushNotifications.Client({
+      instanceId: "57304e07-5191-48ad-98ac-17abe9b14057",
+    });
   }, []);
 
-  return null; // Este componente no renderiza nada visualmente
+  // Esta función se llamará cuando el usuario haga clic en "Activar Notificaciones"
+  window.initPushNotifications = async () => {
+    if (!beamsClient || !isSupported) return false;
+
+    try {
+      // Pedir permiso solo tras interacción
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        console.log("Permiso de notificaciones denegado.");
+        return false;
+      }
+
+      await beamsClient.start();
+      await beamsClient.addDeviceInterest("hello");
+      console.log("✅ Notificaciones activadas correctamente.");
+      return true;
+    } catch (err) {
+      console.error("❌ Error al activar notificaciones:", err);
+      return false;
+    }
+  };
+
+  return null;
 }
