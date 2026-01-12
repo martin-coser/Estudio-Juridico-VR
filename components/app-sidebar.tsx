@@ -6,9 +6,6 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Scale, Home, Briefcase, Users, Calendar, Bell, LogOut } from "lucide-react"
-import { Settings } from "lucide-react";
-import { useState } from "react"
-import { NotificationToggle } from "@/components/NotificationToggle";
 
 const navigation = [
   { name: "Inicio", href: "/", icon: Home },
@@ -22,46 +19,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { signOut, user } = useAuth()
   const userEmail = user?.email || "usuario@estudio.com"
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-
-  // Modal de Ajustes
-  if (isSettingsOpen) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-sm rounded-lg border bg-background p-6 shadow-xl">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Ajustes</h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSettingsOpen(false)}
-            >
-              ✕
-            </Button>
-          </div>
-
-          <div className="mt-4 space-y-4">
-            <div>
-              <h4 className="font-medium">Notificaciones Push</h4>
-              <p className="text-sm text-muted-foreground mt-1">
-                Activa las notificaciones para recibir alertas sobre plazos, eventos y tareas.
-              </p>
-            </div>
-
-            <NotificationToggle />
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
-              Cerrar
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div className="flex h-full w-64 flex-col bg-card">
       {/* Logo + Título - Adaptado para móvil */}
@@ -110,17 +68,6 @@ export function AppSidebar() {
             {userEmail}
           </p>
         </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-3 text-muted-foreground hover:bg-secondary hover:text-foreground"
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          <Settings className="h-4 w-4" />
-          <span className="hidden sm:inline">Ajustes</span>
-          <span className="sm:hidden">Ajustes</span>
-        </Button>
 
         <Button
           variant="outline"
