@@ -154,7 +154,6 @@ export function ClientDialog({ open, onOpenChange, client, onSuccess }: ClientDi
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
               placeholder="juan@example.com"
               className="h-12 text-base"
               disabled={loading}

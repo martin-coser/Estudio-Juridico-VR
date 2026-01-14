@@ -165,6 +165,42 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                 </div>
               </div>
             )}
+
+            {/* Textos largos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {caseData.descripcion && (
+                <div className="flex items-start gap-3">
+                  <ScrollText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Motivo del Caso</p>
+                    <p className="text-foreground whitespace-pre-wrap">{caseData.descripcion}</p>
+                  </div>
+                </div>
+              )}
+
+              {caseData.homologacionSentencia && (
+                <div className="flex items-start gap-3">
+                  <Gavel className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Homologación / Sentencia</p>
+                    <p className="text-foreground whitespace-pre-wrap">{caseData.homologacionSentencia}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {isSRTorART && caseData.patologia && (
+              <>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <Stethoscope className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Patología</p>
+                    <p className="text-foreground whitespace-pre-wrap">{caseData.patologia}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <Separator />
@@ -313,41 +349,6 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
 
           <Separator />
 
-          {/* Textos largos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {caseData.descripcion && (
-              <div className="flex items-start gap-3">
-                <ScrollText className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Motivo del Caso</p>
-                  <p className="text-foreground whitespace-pre-wrap">{caseData.descripcion}</p>
-                </div>
-              </div>
-            )}
-
-            {caseData.homologacionSentencia && (
-              <div className="flex items-start gap-3">
-                <Gavel className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Homologación / Sentencia</p>
-                  <p className="text-foreground whitespace-pre-wrap">{caseData.homologacionSentencia}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {isSRTorART && caseData.patologia && (
-            <>
-              <Separator />
-              <div className="flex items-start gap-3">
-                <Stethoscope className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Patología</p>
-                  <p className="text-foreground whitespace-pre-wrap">{caseData.patologia}</p>
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </DialogContent>
     </Dialog>
