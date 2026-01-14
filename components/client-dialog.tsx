@@ -147,7 +147,7 @@ export function ClientDialog({ open, onOpenChange, client, onSuccess }: ClientDi
 
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-base font-medium">
-              Email *
+              Email
             </Label>
             <Input
               id="email"

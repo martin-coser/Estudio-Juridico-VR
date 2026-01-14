@@ -32,7 +32,6 @@ import { ClientDialog } from "./client-dialog"
 // === FUNCIÓN AUXILIAR PARA FORMATEAR FECHAS SIN DESFASE ===
 const formatLocalDate = (dateStr: string | undefined): string => {
   if (!dateStr) return ""
-  // Forzar interpretación en zona local (evitar UTC)
   const [year, month, day] = dateStr.split("-").map(Number)
   return new Date(year, month - 1, day).toLocaleDateString("es-AR")
 }
@@ -137,7 +136,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
       })) as Client[]
       setClients(clientsData)
     } catch (error) {
-      console.error("[v0] Error fetching clients:", error)
+      console.error("[CaseDialog] Error fetching clients:", error)
     }
   }
 
@@ -160,7 +159,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
       }
 
       if (caseData) {
-        const caseRef = doc(db, "cases", caseData.id)
+        const caseRef = doc(db, "cases", caseData.id!)
         await updateDoc(caseRef, dataToSave)
         toast({ title: "Caso actualizado", description: "El caso ha sido actualizado correctamente." })
       } else {
@@ -170,26 +169,8 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
 
       onSuccess()
       onOpenChange(false)
-      setFormData({
-        tipo: "SRT",
-        caratula: "",
-        clienteId: "",
-        patologia: "",
-        expediente: "",
-        nombreCaso: "",
-        tipoProceso: "",
-        descripcion: "",
-        localidad: "",
-        estado: "Activo",
-        homologacionSentencia: "",
-        estadoPago: "Debe",
-        plazos: [],
-        oficios: [],
-        tareas: [],
-      })
-      setStep("type")
     } catch (error) {
-      console.error("[v0] Error saving case:", error)
+      console.error("[CaseDialog] Error saving case:", error)
       toast({
         title: "Error",
         description: "No se pudo guardar el caso.",
@@ -198,6 +179,59 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
     } finally {
       setLoading(false)
     }
+  }
+
+  const openEditItem = (type: EditingItemType, item: Plazo | Oficio | Tarea | null = null) => {
+    setEditingItemType(type)
+    setEditingItem(item || {
+      id: Date.now().toString(),
+      ...(type === "plazo"
+        ? { nombre: "", descripcion: "", fecha: "" }
+        : { titulo: "", descripcion: "", fechaEntrega: "", entregado: false }),
+    } as Plazo | Oficio | Tarea)
+  }
+
+  const closeEditItem = () => {
+    setEditingItemType(null)
+    setEditingItem(null)
+  }
+
+  const saveItem = () => {
+    if (!editingItem || !editingItemType) return
+
+    const arrayKey = itemArrayKey[editingItemType]
+
+    setFormData((prev) => {
+      const currentArray = (prev[arrayKey] ?? []) as (Plazo | Oficio | Tarea)[]
+      const exists = currentArray.some((i) => i.id === editingItem.id)
+
+      return {
+        ...prev,
+        [arrayKey]: exists
+          ? currentArray.map((i) => (i.id === editingItem.id ? editingItem : i))
+          : [...currentArray, editingItem],
+      }
+    })
+
+    closeEditItem()
+  }
+
+  const deleteItem = (type: "plazo" | "oficio" | "tarea", id: string) => {
+    const arrayKey = itemArrayKey[type]
+    setFormData((prev) => ({
+      ...prev,
+      [arrayKey]: (prev[arrayKey] as any[])?.filter((item) => item.id !== id) ?? [],
+    }))
+  }
+
+  const toggleEntregado = (type: "oficio" | "tarea", id: string) => {
+    const arrayKey = itemArrayKey[type]
+    setFormData((prev) => ({
+      ...prev,
+      [arrayKey]: (prev[arrayKey] as any[])?.map((item: any) =>
+        item.id === id ? { ...item, entregado: !item.entregado } : item
+      ) ?? [],
+    }))
   }
 
   const renderTypeSelection = () => (
@@ -220,75 +254,6 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
       </div>
     </div>
   )
-
-  // === GESTIÓN DE ÍTEMS ===
-
-  const openEditItem = (type: EditingItemType, item: Plazo | Oficio | Tarea | null = null) => {
-    setEditingItemType(type)
-    setEditingItem(item || {
-      id: Date.now().toString(),
-      ...(type === "plazo"
-        ? { nombre: "", descripcion: "", fecha: "" }
-        : { titulo: "", descripcion: "", fechaEntrega: "", entregado: false }),
-    })
-  }
-
-  const closeEditItem = () => {
-    setEditingItemType(null)
-    setEditingItem(null)
-  }
-
-  const saveItem = () => {
-    if (!editingItem || !editingItemType) return
-
-    const arrayKey = itemArrayKey[editingItemType]
-
-    if (editingItemType === "plazo") {
-      const plazo = editingItem as Plazo
-      setFormData((prev) => ({
-        ...prev,
-        [arrayKey]: (prev.plazos ?? []).some((p) => p.id === plazo.id)
-          ? (prev.plazos ?? []).map((p) => (p.id === plazo.id ? plazo : p))
-          : [...(prev.plazos ?? []), plazo],
-      }))
-    } else if (editingItemType === "oficio") {
-      const oficio = editingItem as Oficio
-      setFormData((prev) => ({
-        ...prev,
-        [arrayKey]: (prev.oficios ?? []).some((o) => o.id === oficio.id)
-          ? (prev.oficios ?? []).map((o) => (o.id === oficio.id ? oficio : o))
-          : [...(prev.oficios ?? []), oficio],
-      }))
-    } else if (editingItemType === "tarea") {
-      const tarea = editingItem as Tarea
-      setFormData((prev) => ({
-        ...prev,
-        [arrayKey]: (prev.tareas ?? []).some((t) => t.id === tarea.id)
-          ? (prev.tareas ?? []).map((t) => (t.id === tarea.id ? tarea : t))
-          : [...(prev.tareas ?? []), tarea],
-      }))
-    }
-
-    closeEditItem()
-  }
-
-  const deleteItem = (type: "plazo" | "oficio" | "tarea", id: string) => {
-    const arrayKey = itemArrayKey[type]
-    setFormData((prev) => ({
-      ...prev,
-      [arrayKey]: (prev[arrayKey] as any[])?.filter((item: any) => item.id !== id) || [],
-    }))
-  }
-
-  const toggleEntregado = (type: "oficio" | "tarea", id: string) => {
-    const arrayKey = itemArrayKey[type]
-    setFormData((prev) => ({
-      ...prev,
-      [arrayKey]: (prev[arrayKey] as any[])?.map((item: any) =>
-        item.id === id ? { ...item, entregado: !item.entregado } : item
-      ),
-    }))
-  }
 
   const renderForm = () => {
     const isSRTorART = formData.tipo === "SRT" || formData.tipo === "ART"
@@ -473,7 +438,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           </div>
         )}
 
-        {/* === PLAZOS === */}
+        {/* PLAZOS */}
         <div className="space-y-4 pt-6 border-t">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold">Plazos del Caso</Label>
@@ -508,7 +473,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           )}
         </div>
 
-        {/* === OFICIOS === */}
+        {/* OFICIOS */}
         <div className="space-y-4 pt-6 border-t">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold">Oficios</Label>
@@ -552,7 +517,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           )}
         </div>
 
-        {/* === TAREAS === */}
+        {/* TAREAS */}
         <div className="space-y-4 pt-6 border-t">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold">Tareas</Label>
@@ -596,7 +561,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
           )}
         </div>
 
-        {/* Botones finales */}
+        {/* Botones finales del formulario principal */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t -mx-6 px-6 pb-6 bg-background sticky bottom-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
@@ -609,21 +574,38 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
     )
   }
 
-  // === MODAL DE EDICIÓN DE ÍTEM ===
   const renderItemEditModal = () => {
     if (!editingItem || !editingItemType) return null
 
     const isNew = !(formData[itemArrayKey[editingItemType]] as any[])?.some((i: any) => i.id === editingItem.id)
 
     return (
-      <Dialog open={!!editingItemType} onOpenChange={(open) => {if (!open) {closeEditItem()}}} modal={true}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog
+        open={!!editingItemType}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEditItem()
+          }
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-lg max-h-[90vh] overflow-y-auto"
+          // Bloqueo clave para móviles: evita cierre por toque fuera
+          onInteractOutside={(e) => e.preventDefault()}
+          // Controlamos Escape manualmente
+          onEscapeKeyDown={(e) => {
+            e.preventDefault()
+            closeEditItem()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
-              {isNew ? "Agregar" : "Editar"} {editingItemType === "plazo" ? "Plazo" : editingItemType === "oficio" ? "Oficio" : "Tarea"}
+              {isNew ? "Agregar" : "Editar"}{" "}
+              {editingItemType === "plazo" ? "Plazo" : editingItemType === "oficio" ? "Oficio" : "Tarea"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+
+          <div className="space-y-5 py-5">
             {editingItemType === "plazo" ? (
               <>
                 <div>
@@ -648,7 +630,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
                   <Textarea
                     value={(editingItem as Plazo).descripcion || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, descripcion: e.target.value })}
-                    rows={2}
+                    rows={3}
                   />
                 </div>
               </>
@@ -675,15 +657,35 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
                   <Textarea
                     value={(editingItem as Oficio | Tarea).descripcion || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, descripcion: e.target.value })}
-                    rows={2}
+                    rows={3}
                   />
                 </div>
               </>
             )}
           </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={closeEditItem}>Cancelar</Button>
-            <Button type="button" onClick={(e) => {e.stopPropagation(); saveItem()}}>Guardar</Button>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                closeEditItem()
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                saveItem()
+              }}
+            >
+              Guardar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -692,7 +694,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-full w-[95vw] sm:max-w-2xl md:max-w-5xl max-h-[95vh] flex flex-col p-0">
           <DialogHeader className="p-6 pb-4 border-b shrink-0">
             <DialogTitle className="text-2xl">
@@ -703,8 +705,8 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
                 {caseData
                   ? "Modifica los datos del caso"
                   : step === "type"
-                    ? "Primero selecciona el tipo de caso"
-                    : "Completa toda la información requerida"}
+                  ? "Primero selecciona el tipo de caso"
+                  : "Completa toda la información requerida"}
               </p>
             </DialogDescription>
           </DialogHeader>
