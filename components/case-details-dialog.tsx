@@ -115,7 +115,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
               <div className="flex items-center gap-3">
                 <User className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Cliente</p>
+                  <p className="text-sm font-medium text-muted-foreground">Cliente</p>
                   <p className="font-medium">{caseData.clienteNombre || "Sin asignar"}</p>
                 </div>
               </div>
@@ -123,7 +123,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Localidad</p>
+                  <p className="text-sm font-medium text-muted-foreground">Localidad</p>
                   <p className="font-medium">{caseData.localidad}</p>
                 </div>
               </div>
@@ -131,7 +131,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
               <div className="flex items-center gap-3">
                 <Gavel className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Tipo de Proceso</p>
+                  <p className="text-sm font-medium text-muted-foreground">Tipo de Proceso</p>
                   <p className="font-medium">{caseData.tipoProceso || "No especificado"}</p>
                 </div>
               </div>
@@ -139,7 +139,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
               <div className="flex items-center gap-3">
                 <Power className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Estado</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Estado</p>
                   <Badge 
                     variant="outline"
                     className={`
@@ -160,7 +160,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
               <div className="flex items-start gap-3">
                 <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Nombre descriptivo</p>
+                  <p className="text-sm font-medium text-muted-foreground">Nombre descriptivo</p>
                   <p className="font-medium">{caseData.nombreCaso}</p>
                 </div>
               </div>
@@ -170,9 +170,9 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {caseData.descripcion && (
                 <div className="flex items-start gap-3">
-                  <ScrollText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <ScrollText className="h-10 w-10 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Motivo del Caso</p>
+                    <p className="text-sm font-medium text-muted-foreground">Descripción</p>
                     <p className="text-foreground whitespace-pre-wrap">{caseData.descripcion}</p>
                   </div>
                 </div>
@@ -182,7 +182,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                 <div className="flex items-start gap-3">
                   <Gavel className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Homologación / Sentencia</p>
+                    <p className="text-sm font-medium text-muted-foreground">Homologación / Sentencia</p>
                     <p className="text-foreground whitespace-pre-wrap">{caseData.homologacionSentencia}</p>
                   </div>
                 </div>

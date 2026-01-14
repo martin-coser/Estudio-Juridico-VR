@@ -132,13 +132,12 @@ export function ClientDialog({ open, onOpenChange, client, onSuccess }: ClientDi
 
           <div className="space-y-1.5">
             <Label htmlFor="telefono" className="text-base font-medium">
-              Teléfono *
+              Teléfono
             </Label>
             <Input
               id="telefono"
               value={formData.telefono}
               onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              required
               placeholder="+54 11 1234-5678"
               className="h-12 text-base"
               disabled={loading}
