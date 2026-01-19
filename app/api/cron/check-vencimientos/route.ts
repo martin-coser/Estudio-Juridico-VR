@@ -89,16 +89,23 @@ export async function GET() {
           const fechaPlazo = new Date(plazo.fecha);
           if (fechaPlazo.getTime() <= tiempoLimite && fechaPlazo.getTime() >= (tiempoAhora - 86400000)) {
             const fechaFormateada = formatDate(plazo.fecha);
-            const title = '🔴 PLAZO PRÓXIMO';
+            
+            const title = 'PLAZO PROXIMO';
             const body = `${plazo.nombre || 'Vencimiento'} (Fecha: ${fechaFormateada}) - Exp: ${expediente}`;
 
-            // Notificación push
+            // Notificación push → con emoji
             await beamsClient.publishToInterests(["hello"], {
-              web: { notification: { title, body, icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' }}
+              web: { 
+                notification: { 
+                  title: '🔴 ' + title, 
+                  body, 
+                  icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' 
+                }
+              }
             });
             totalPush++;
 
-            // SMS a los 3 números fijos
+            // SMS → sin emojis
             totalSms += await sendSmsToAll(`${title}\n${body}`);
           }
         }
@@ -108,11 +115,17 @@ export async function GET() {
       const oficios = caso.oficios || [];
       for (const oficio of oficios) {
         if (!oficio.completado) {
-          const title = '📂 OFICIO PENDIENTE';
+          const title = 'OFICIO PENDIENTE';
           const body = `${oficio.titulo || 'Oficio'} - Exp: ${expediente}`;
 
           await beamsClient.publishToInterests(["hello"], {
-            web: { notification: { title, body, icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' }}
+            web: { 
+              notification: { 
+                title: '📂 ' + title, 
+                body, 
+                icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' 
+              }
+            }
           });
           totalPush++;
 
@@ -124,11 +137,17 @@ export async function GET() {
       const tareas = caso.tareas || [];
       for (const tarea of tareas) {
         if (!tarea.completado) {
-          const title = '✅ TAREA PENDIENTE';
+          const title = 'TAREA PENDIENTE';
           const body = `${tarea.titulo || 'Tarea'} - Exp: ${expediente}`;
 
           await beamsClient.publishToInterests(["hello"], {
-            web: { notification: { title, body, icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' }}
+            web: { 
+              notification: { 
+                title: '✅ ' + title, 
+                body, 
+                icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' 
+              }
+            }
           });
           totalPush++;
 
@@ -145,11 +164,18 @@ export async function GET() {
         const fechaEv = new Date(evento.fecha);
         if (fechaEv.getTime() <= tiempoLimite && fechaEv.getTime() >= (tiempoAhora - 86400000)) {
           const fechaFormateada = formatDate(evento.fecha);
-          const title = '📅 EVENTO EN AGENDA';
+          
+          const title = 'EVENTO EN AGENDA';
           const body = `${evento.titulo || 'Sin título'} (Fecha: ${fechaFormateada})`;
 
           await beamsClient.publishToInterests(["hello"], {
-            web: { notification: { title, body, icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' }}
+            web: { 
+              notification: { 
+                title: '📅 ' + title, 
+                body, 
+                icon: 'https://estudio-juridico-vr.vercel.app/balanza.jpg' 
+              }
+            }
           });
           totalPush++;
 
