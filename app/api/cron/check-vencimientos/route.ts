@@ -106,7 +106,7 @@ export async function GET() {
             totalPush++;
 
             // SMS → sin emojis
-            totalSms += await sendSmsToAll(`${title}\n${body}`);
+            totalSms += await sendSmsToAll(`${title}: ${body}`);
           }
         }
       }
@@ -114,7 +114,8 @@ export async function GET() {
       // OFICIOS
       const oficios = caso.oficios || [];
       for (const oficio of oficios) {
-        if (!oficio.completado) {
+        // Cambio aquí: Se añade la validación de !oficio.entregado
+        if (!oficio.completado && !oficio.entregado) {
           const title = 'OFICIO PENDIENTE';
           const body = `${oficio.titulo || 'Oficio'} - Exp: ${expediente}`;
 
@@ -129,14 +130,15 @@ export async function GET() {
           });
           totalPush++;
 
-          totalSms += await sendSmsToAll(`${title}\n${body}`);
+          totalSms += await sendSmsToAll(`${title}: ${body}`);
         }
       }
 
       // TAREAS
       const tareas = caso.tareas || [];
       for (const tarea of tareas) {
-        if (!tarea.completado) {
+        // Cambio aquí: Se añade la validación de !tarea.entregado
+        if (!tarea.completado && !tarea.entregado) {
           const title = 'TAREA PENDIENTE';
           const body = `${tarea.titulo || 'Tarea'} - Exp: ${expediente}`;
 
@@ -151,7 +153,7 @@ export async function GET() {
           });
           totalPush++;
 
-          totalSms += await sendSmsToAll(`${title}\n${body}`);
+          totalSms += await sendSmsToAll(`${title}: ${body}`);
         }
       }
     }
@@ -179,7 +181,7 @@ export async function GET() {
           });
           totalPush++;
 
-          totalSms += await sendSmsToAll(`${title}\n${body}`);
+          totalSms += await sendSmsToAll(`${title}: ${body}`);
         }
       }
     }
