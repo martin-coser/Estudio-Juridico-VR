@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import type { Case } from "@/lib/types"
 import {
@@ -85,9 +86,22 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
           </DialogTitle>
         </DialogHeader>
 
-        <div className="mt-6 space-y-8">
-          {/* Información principal */}
-          <div className="space-y-6">
+        <Tabs defaultValue="info" className="mt-6">
+          <TabsList className="w-full">
+            <TabsTrigger value="info" className="flex-1 gap-2">
+              <Briefcase className="h-4 w-4" />
+              <span className="hidden sm:inline">Información General</span>
+              <span className="sm:hidden">Info</span>
+            </TabsTrigger>
+            <TabsTrigger value="seguimiento" className="flex-1 gap-2">
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Plazos, Oficios y Tareas</span>
+              <span className="sm:hidden">Seguimiento</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Información General */}
+          <TabsContent value="info" className="mt-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">{caseData.caratula}</h2>
@@ -153,7 +167,6 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                   </Badge>
                 </div>
               </div>
-
             </div>
 
             {caseData.nombreCaso && (
@@ -201,155 +214,153 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                 </div>
               </>
             )}
-          </div>
+          </TabsContent>
 
-          <Separator />
-
-          {/* Plazos */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Plazos del Caso
-            </h3>
-            {caseData.plazos && caseData.plazos.length > 0 ? (
-              <div className="space-y-3">
-                {caseData.plazos.map((plazo) => {
-                  const overdue = isOverdue(plazo.fecha)
-                  const soon = !overdue && isSoon(plazo.fecha)
-                  return (
-                    <div
-                      key={plazo.id}
-                      className={cn(
-                        "rounded-lg border p-4 transition-all",
-                        overdue && "border-destructive/50 bg-destructive/5",
-                        soon && "border-orange-500/50 bg-orange-500/5"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="font-semibold text-foreground">{plazo.nombre}</p>
-                          {plazo.descripcion && (
-                            <p className="text-sm text-muted-foreground mt-1">{plazo.descripcion}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className={cn("font-medium", overdue && "text-destructive", soon && "text-orange-600")}>
-                            {formatDate(plazo.fecha)}
-                          </p>
-                          {overdue && <Badge variant="destructive" className="mt-1 text-xs">Vencido</Badge>}
-                          {soon && <Badge className="mt-1 text-xs bg-orange-500 text-white">Próximo</Badge>}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground italic">No hay plazos definidos</p>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Oficios */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Oficios
-            </h3>
-            {caseData.oficios && caseData.oficios.length > 0 ? (
-              <div className="space-y-3">
-                {caseData.oficios.map((oficio) => {
-                  const overdue = isOverdue(oficio.fechaEntrega) && !oficio.entregado
-                  return (
-                    <div
-                      key={oficio.id}
-                      className={cn(
-                        "rounded-lg border p-4",
-                        overdue && "border-destructive/50 bg-destructive/5"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="font-semibold">{oficio.titulo}</p>
-                          {oficio.descripcion && (
-                            <p className="text-sm text-muted-foreground mt-1">{oficio.descripcion}</p>
-                          )}
-                          {oficio.fechaEntrega && (
-                            <p className={cn("text-sm mt-2", overdue && "text-destructive")}>
-                              Fecha de entrega: {formatDate(oficio.fechaEntrega)}
+          {/* Tab: Plazos, Oficios y Tareas */}
+          <TabsContent value="seguimiento" className="mt-6 space-y-8">
+            {/* Plazos */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Plazos del Caso
+              </h3>
+              {caseData.plazos && caseData.plazos.length > 0 ? (
+                <div className="space-y-3">
+                  {caseData.plazos.map((plazo) => {
+                    const overdue = isOverdue(plazo.fecha)
+                    const soon = !overdue && isSoon(plazo.fecha)
+                    return (
+                      <div
+                        key={plazo.id}
+                        className={cn(
+                          "rounded-lg border p-4 transition-all",
+                          overdue && "border-destructive/50 bg-destructive/5",
+                          soon && "border-orange-500/50 bg-orange-500/5"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="font-semibold text-foreground">{plazo.nombre}</p>
+                            {plazo.descripcion && (
+                              <p className="text-sm text-muted-foreground mt-1">{plazo.descripcion}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className={cn("font-medium", overdue && "text-destructive", soon && "text-orange-600")}>
+                              {formatDate(plazo.fecha)}
                             </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Checkbox checked={oficio.entregado} disabled />
-                          <span className={cn("text-sm font-medium", oficio.entregado ? "text-green-600" : "text-muted-foreground")}>
-                            {oficio.entregado ? "Entregado" : "Pendiente"}
-                          </span>
+                            {overdue && <Badge variant="destructive" className="mt-1 text-xs">Vencido</Badge>}
+                            {soon && <Badge className="mt-1 text-xs bg-orange-500 text-white">Próximo</Badge>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground italic">No hay oficios registrados</p>
-            )}
-          </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted-foreground italic">No hay plazos definidos</p>
+              )}
+            </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Tareas */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CheckSquare className="h-5 w-5 text-primary" />
-              Tareas
-            </h3>
-            {caseData.tareas && caseData.tareas.length > 0 ? (
-              <div className="space-y-3">
-                {caseData.tareas.map((tarea) => {
-                  const overdue = isOverdue(tarea.fechaEntrega) && !tarea.entregado
-                  return (
-                    <div
-                      key={tarea.id}
-                      className={cn(
-                        "rounded-lg border p-4",
-                        overdue && "border-destructive/50 bg-destructive/5"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className={cn("font-semibold", tarea.entregado && "line-through text-muted-foreground")}>
-                            {tarea.titulo}
-                          </p>
-                          {tarea.descripcion && (
-                            <p className="text-sm text-muted-foreground mt-1">{tarea.descripcion}</p>
-                          )}
-                          {tarea.fechaEntrega && (
-                            <p className={cn("text-sm mt-2", overdue && "text-destructive")}>
-                              Fecha límite: {formatDate(tarea.fechaEntrega)}
+            {/* Oficios */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Oficios
+              </h3>
+              {caseData.oficios && caseData.oficios.length > 0 ? (
+                <div className="space-y-3">
+                  {caseData.oficios.map((oficio) => {
+                    const overdue = isOverdue(oficio.fechaEntrega) && !oficio.entregado
+                    return (
+                      <div
+                        key={oficio.id}
+                        className={cn(
+                          "rounded-lg border p-4",
+                          overdue && "border-destructive/50 bg-destructive/5"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="font-semibold">{oficio.titulo}</p>
+                            {oficio.descripcion && (
+                              <p className="text-sm text-muted-foreground mt-1">{oficio.descripcion}</p>
+                            )}
+                            {oficio.fechaEntrega && (
+                              <p className={cn("text-sm mt-2", overdue && "text-destructive")}>
+                                Fecha de entrega: {formatDate(oficio.fechaEntrega)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox checked={oficio.entregado} disabled />
+                            <span className={cn("text-sm font-medium", oficio.entregado ? "text-green-600" : "text-muted-foreground")}>
+                              {oficio.entregado ? "Entregado" : "Pendiente"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted-foreground italic">No hay oficios registrados</p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Tareas */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-primary" />
+                Tareas
+              </h3>
+              {caseData.tareas && caseData.tareas.length > 0 ? (
+                <div className="space-y-3">
+                  {caseData.tareas.map((tarea) => {
+                    const overdue = isOverdue(tarea.fechaEntrega) && !tarea.entregado
+                    return (
+                      <div
+                        key={tarea.id}
+                        className={cn(
+                          "rounded-lg border p-4",
+                          overdue && "border-destructive/50 bg-destructive/5"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className={cn("font-semibold", tarea.entregado && "line-through text-muted-foreground")}>
+                              {tarea.titulo}
                             </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Checkbox checked={tarea.entregado} disabled />
-                          <span className={cn("text-sm font-medium", tarea.entregado ? "text-green-600" : "text-muted-foreground")}>
-                            {tarea.entregado ? "Completada" : "Pendiente"}
-                          </span>
+                            {tarea.descripcion && (
+                              <p className="text-sm text-muted-foreground mt-1">{tarea.descripcion}</p>
+                            )}
+                            {tarea.fechaEntrega && (
+                              <p className={cn("text-sm mt-2", overdue && "text-destructive")}>
+                                Fecha límite: {formatDate(tarea.fechaEntrega)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox checked={tarea.entregado} disabled />
+                            <span className={cn("text-sm font-medium", tarea.entregado ? "text-green-600" : "text-muted-foreground")}>
+                              {tarea.entregado ? "Completada" : "Pendiente"}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground italic">No hay tareas pendientes</p>
-            )}
-          </div>
-
-          <Separator />
-
-        </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted-foreground italic">No hay tareas pendientes</p>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

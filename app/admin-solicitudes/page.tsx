@@ -6,9 +6,9 @@ import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase
 import { sendSignInLinkToEmail } from "firebase/auth"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Send, Scale, Clock, UserCheck } from "lucide-react"
+import { Loader2, Send, Scale, Clock, UserCheck, ArrowLeft } from "lucide-react"
 
 // Reemplaza esto con tu UID real de Firebase Authentication
 const ADMIN_UID = "SWuK09UZJ5fJ6YSPtcNFDVRePbV2";
@@ -19,7 +19,7 @@ export default function AdminSolicitudes() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
-  // 1. Verificación de Seguridad: Solo el dueño entra
+  // 1. Verificación de Seguridad
   useEffect(() => {
     if (!authLoading) {
       if (!user || user.uid !== ADMIN_UID) {
@@ -51,13 +51,8 @@ export default function AdminSolicitudes() {
         handleCodeInApp: true,
       };
 
-      // Enviamos link de registro (Plan Spark)
       await sendSignInLinkToEmail(auth, email, actionCodeSettings)
-      
-      // Guardamos el email en localStorage para que sea más fácil al usuario
       window.localStorage.setItem('emailForSignIn', email)
-
-      // Borramos la solicitud de la lista
       await deleteDoc(doc(db, "solicitudes", id))
       
       alert(`Invitación enviada correctamente a: ${email}`)
@@ -69,31 +64,40 @@ export default function AdminSolicitudes() {
     }
   }
 
-  // Pantalla de carga mientras verifica si eres admin
   if (authLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-accent" />
-        <p className="text-muted-foreground animate-pulse">Verificando credenciales de administrador...</p>
+        <p className="text-muted-foreground animate-pulse">Verificando credenciales...</p>
       </div>
     )
   }
 
-  // Si no es el admin, no mostramos nada (la redirección ocurre en el useEffect)
   if (!user || user.uid !== ADMIN_UID) return null
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         
-        {/* Encabezado del Panel */}
-        <div className="flex items-center gap-4 border-b pb-6">
-          <div className="bg-accent p-3 rounded-xl shadow-lg">
-            <Scale className="h-8 w-8 text-accent-foreground" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold">Panel de Control</h1>
-            <p className="text-muted-foreground">Gestión de solicitudes de acceso al sistema</p>
+        {/* Botón Volver y Encabezado */}
+        <div className="space-y-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push("/")}
+            className="gap-2 text-muted-foreground hover:text-foreground -ml-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver al Inicio
+          </Button>
+
+          <div className="flex items-center gap-4 border-b pb-6">
+            <div className="bg-accent p-3 rounded-xl shadow-lg">
+              <Scale className="h-8 w-8 text-accent-foreground" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Panel de Control</h1>
+              <p className="text-muted-foreground">Gestión de solicitudes de acceso</p>
+            </div>
           </div>
         </div>
 
@@ -108,7 +112,7 @@ export default function AdminSolicitudes() {
             <Card className="border-dashed bg-transparent">
               <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <UserCheck className="h-12 w-12 mb-4 opacity-20" />
-                <p>No hay solicitudes de registro por el momento.</p>
+                <p>No hay solicitudes pendientes.</p>
               </CardContent>
             </Card>
           ) : (

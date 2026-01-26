@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Scale, CheckCircle2, AlertCircle, Mail, Lock } from "lucide-react"
+import { Scale, CheckCircle2, AlertCircle } from "lucide-react"
 import { 
   setPersistence, 
   browserLocalPersistence, 
@@ -31,7 +31,6 @@ export default function LoginPage() {
   const { signIn, signInWithGoogle } = useAuth()
   const router = useRouter()
 
-  // --- Lógica de Olvidé mi Contraseña ---
   const handleForgotPassword = async () => {
     if (!email) {
       setError("Por favor, ingresa tu email primero para enviarte el enlace de recuperación.")
@@ -44,7 +43,6 @@ export default function LoginPage() {
       await sendPasswordResetEmail(auth, email)
       setSuccess("Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.")
     } catch (err: any) {
-      console.error(err)
       setError("Error: No se pudo enviar el correo. Verifica que el email sea correcto.")
     } finally {
       setLoading(false)
@@ -58,12 +56,10 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      // Configurar persistencia
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
       await setPersistence(auth, persistence)
 
       if (isRegister) {
-        // FLUJO DE SOLICITUD (Aprobación manual)
         await addDoc(collection(db, "solicitudes"), {
           email: email.toLowerCase().trim(),
           estado: "pendiente",
@@ -73,28 +69,28 @@ export default function LoginPage() {
         setEmail("")
         setPassword("")
       } else {
-        // LOGIN NORMAL
         await signIn(email, password)
         router.push("/")
       }
     } catch (err: any) {
-      console.error(err)
-      setError(err.message || "Credenciales incorrectas o error de conexión.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleGoogleSignIn = async () => {
-    setError("")
-    setLoading(true)
-    try {
-      const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
-      await setPersistence(auth, persistence)
-      await signInWithGoogle()
-      router.push("/")
-    } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión con Google")
+      console.error("Firebase Error Code:", err.code)
+      
+      // Personalización de mensajes de error
+      if (!isRegister) {
+        if (
+          err.code === "auth/invalid-credential" || 
+          err.code === "auth/user-not-found" || 
+          err.code === "auth/wrong-password"
+        ) {
+          setError("Credenciales incorrectas, intenta de nuevo.")
+        } else if (err.code === "auth/too-many-requests") {
+          setError("Demasiados intentos fallidos. Intenta más tarde.")
+        } else {
+          setError("Ocurrió un error al iniciar sesión. Intenta nuevamente.")
+        }
+      } else {
+        setError("No se pudo procesar la solicitud. Intenta más tarde.")
+      }
     } finally {
       setLoading(false)
     }
@@ -120,7 +116,6 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Mensajes de Estado */}
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -152,43 +147,45 @@ export default function LoginPage() {
                 </div>
 
                 {!isRegister && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Contraseña</Label>
-                      <button
-                        type="button"
-                        onClick={handleForgotPassword}
-                        className="text-xs text-accent hover:underline font-medium"
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password">Contraseña</Label>
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          className="text-xs text-accent hover:underline font-medium"
+                          disabled={loading}
+                        >
+                          ¿Olvidaste tu contraseña?
+                        </button>
+                      </div>
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required={!isRegister}
                         disabled={loading}
-                      >
-                        ¿Olvidaste tu contraseña?
-                      </button>
+                        className="h-11"
+                      />
                     </div>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required={!isRegister}
-                      disabled={loading}
-                      className="h-11"
-                    />
-                  </div>
-                )}
 
-                <div className="flex items-center space-x-2 py-2">
-                  <input
-                    id="rememberMe"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
-                  />
-                  <Label htmlFor="rememberMe" className="text-sm text-muted-foreground cursor-pointer">
-                    Mantener sesión iniciada
-                  </Label>
-                </div>
+                    <div className="flex items-center space-x-2 py-2">
+                      <input
+                        id="rememberMe"
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                      />
+                      <Label htmlFor="rememberMe" className="text-sm text-muted-foreground cursor-pointer">
+                        Mantener sesión iniciada
+                      </Label>
+                    </div>
+                  </>
+                )}
 
                 <Button
                   type="submit"

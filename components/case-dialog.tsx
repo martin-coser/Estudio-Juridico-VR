@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Pencil, Trash2, Plus } from "lucide-react"
+import { Pencil, Trash2, Plus, Briefcase, Calendar } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { collection, addDoc, updateDoc, doc, getDocs, query, orderBy } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -245,7 +246,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
             type="button"
             key={type}
             variant="outline"
-            className="h-28 text-lg font-medium hover:bg-accent hover:text-accent-foreground transition-all border-2"
+            className="h-28 text-lg font-medium hover:bg-accent hover:text-accent-foreground transition-all border-2 bg-transparent"
             onClick={() => handleTypeSelect(type)}
           >
             {type}
@@ -259,310 +260,331 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
     const isSRTorART = formData.tipo === "SRT" || formData.tipo === "ART"
 
     return (
-      <form onSubmit={handleSubmit} className="space-y-6 py-6">
+      <form onSubmit={handleSubmit} className="py-6">
         {/* Tipo seleccionado */}
-        <div className="rounded-lg bg-accent/10 p-4 border border-accent/20">
+        <div className="rounded-lg bg-accent/10 p-4 border border-accent/20 mb-6">
           <p className="text-sm font-semibold text-accent">Tipo de Caso:</p>
           <p className="text-lg font-bold text-foreground">{formData.tipo}</p>
         </div>
 
-        {/* Campos principales obligatorios */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <Label htmlFor="caratula">Carátula *</Label>
-            <Input
-              id="caratula"
-              value={formData.caratula ?? ""}
-              onChange={(e) => setFormData({ ...formData, caratula: e.target.value })}
-              required
-              placeholder="Ej: González c/ SRT"
-            />
-          </div>
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="info" className="flex-1 gap-2">
+              <Briefcase className="h-4 w-4" />
+              <span className="hidden sm:inline">Información General</span>
+              <span className="sm:hidden">Info</span>
+            </TabsTrigger>
+            <TabsTrigger value="seguimiento" className="flex-1 gap-2">
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Plazos, Oficios y Tareas</span>
+              <span className="sm:hidden">Seguimiento</span>
+            </TabsTrigger>
+          </TabsList>
 
-          <div>
-            <Label htmlFor="cliente">Cliente *</Label>
-            <div className="grid grid-cols-4 gap-3 mt-1">
-              <div className="col-span-3">
+          {/* Tab: Información General */}
+          <TabsContent value="info" className="mt-6 space-y-6">
+            {/* Campos principales obligatorios */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <Label htmlFor="caratula">Carátula *</Label>
+                <Input
+                  id="caratula"
+                  value={formData.caratula ?? ""}
+                  onChange={(e) => setFormData({ ...formData, caratula: e.target.value })}
+                  required
+                  placeholder="Ej: González c/ SRT"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cliente">Cliente *</Label>
+                <div className="grid grid-cols-4 gap-3 mt-1">
+                  <div className="col-span-3">
+                    <Select
+                      value={formData.clienteId ?? ""}
+                      onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => setClientDialogOpen(true)} className="h-10">
+                    + Nuevo
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="expediente">Expediente *</Label>
+                <Input
+                  id="expediente"
+                  value={formData.expediente ?? ""}
+                  onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
+                  required
+                  placeholder="Ej: 12345/2025"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nombreCaso">Nombre Descriptivo *</Label>
+                <Input
+                  id="nombreCaso"
+                  value={formData.nombreCaso ?? ""}
+                  onChange={(e) => setFormData({ ...formData, nombreCaso: e.target.value })}
+                  required
+                  placeholder="Ej: Accidente laboral - fractura"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="localidad">Localidad *</Label>
                 <Select
-                  value={formData.clienteId ?? ""}
-                  onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
+                  value={formData.localidad ?? ""}
+                  onValueChange={(value) => setFormData({ ...formData, localidad: value })}
                   required
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar cliente" />
+                    <SelectValue placeholder="Seleccionar localidad" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.nombre}
+                    {localidades.map((loc) => (
+                      <SelectItem key={loc} value={loc}>
+                        {loc}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="button" variant="outline" onClick={() => setClientDialogOpen(true)} className="h-10">
-                + Nuevo
-              </Button>
+
+              <div>
+                <Label htmlFor="tipoProceso">Tipo de Proceso *</Label>
+                <Select
+                  value={formData.tipoProceso ?? ""}
+                  onValueChange={(value) => setFormData({ ...formData, tipoProceso: value })}
+                  required
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar tipo de proceso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposProceso.map((tp) => (
+                      <SelectItem key={tp} value={tp}>
+                        {tp}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="estado">Estado del Caso *</Label>
+                <Select
+                  value={formData.estado ?? "Activo"}
+                  onValueChange={(value: "Activo" | "Inactivo") => setFormData({ ...formData, estado: value })}
+                  required
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Activo">Activo</SelectItem>
+                    <SelectItem value="Inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="estadoPago">Estado de Pago *</Label>
+                <Select
+                  value={formData.estadoPago ?? "Debe"}
+                  onValueChange={(value: "Pagado" | "Debe") => setFormData({ ...formData, estadoPago: value })}
+                  required
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pagado">Pagado</SelectItem>
+                    <SelectItem value="Debe">Debe</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <Label htmlFor="expediente">Expediente *</Label>
-            <Input
-              id="expediente"
-              value={formData.expediente ?? ""}
-              onChange={(e) => setFormData({ ...formData, expediente: e.target.value })}
-              required
-              placeholder="Ej: 12345/2025"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="nombreCaso">Nombre Descriptivo *</Label>
-            <Input
-              id="nombreCaso"
-              value={formData.nombreCaso ?? ""}
-              onChange={(e) => setFormData({ ...formData, nombreCaso: e.target.value })}
-              required
-              placeholder="Ej: Accidente laboral - fractura"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="localidad">Localidad *</Label>
-            <Select
-              value={formData.localidad ?? ""}
-              onValueChange={(value) => setFormData({ ...formData, localidad: value })}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar localidad" />
-              </SelectTrigger>
-              <SelectContent>
-                {localidades.map((loc) => (
-                  <SelectItem key={loc} value={loc}>
-                    {loc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="tipoProceso">Tipo de Proceso *</Label>
-            <Select
-              value={formData.tipoProceso ?? ""}
-              onValueChange={(value) => setFormData({ ...formData, tipoProceso: value })}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar tipo de proceso" />
-              </SelectTrigger>
-              <SelectContent>
-                {tiposProceso.map((tp) => (
-                  <SelectItem key={tp} value={tp}>
-                    {tp}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="estado">Estado del Caso *</Label>
-            <Select
-              value={formData.estado ?? "Activo"}
-              onValueChange={(value: "Activo" | "Inactivo") => setFormData({ ...formData, estado: value })}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Activo">Activo</SelectItem>
-                <SelectItem value="Inactivo">Inactivo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="estadoPago">Estado de Pago *</Label>
-            <Select
-              value={formData.estadoPago ?? "Debe"}
-              onValueChange={(value: "Pagado" | "Debe") => setFormData({ ...formData, estadoPago: value })}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Pagado">Pagado</SelectItem>
-                <SelectItem value="Debe">Debe</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Campos opcionales */}
-        <div>
-          <Label htmlFor="descripcion">Descripción</Label>
-          <Textarea
-            id="descripcion"
-            value={formData.descripcion ?? ""}
-            onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-            rows={3}
-            placeholder="Descripción breve del caso"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="homologacionSentencia">Homologación / Sentencia</Label>
-          <Textarea
-            id="homologacionSentencia"
-            value={formData.homologacionSentencia ?? ""}
-            onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
-            rows={4}
-          />
-        </div>
-
-        {isSRTorART && (
-          <div>
-            <Label htmlFor="patologia">Patología</Label>
-            <Textarea
-              id="patologia"
-              value={formData.patologia ?? ""}
-              onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
-              rows={3}
-              placeholder="Descripción médica detallada"
-            />
-          </div>
-        )}
-
-        {/* PLAZOS */}
-        <div className="space-y-4 pt-6 border-t">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">Plazos del Caso</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => openEditItem("plazo")}>
-              <Plus className="h-4 w-4 mr-1" /> Agregar Plazo
-            </Button>
-          </div>
-          {(!formData.plazos || formData.plazos.length === 0) ? (
-            <p className="text-sm text-muted-foreground italic">No hay plazos agregados aún.</p>
-          ) : (
-            <div className="space-y-3">
-              {formData.plazos.map((plazo) => (
-                <div key={plazo.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                  <div className="flex-1">
-                    <p className="font-medium">{plazo.nombre}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {plazo.fecha ? formatLocalDate(plazo.fecha) : "Sin fecha"}
-                      {plazo.descripcion && ` — ${plazo.descripcion.substring(0, 60)}${plazo.descripcion.length > 60 ? "..." : ""}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("plazo", plazo)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("plazo", plazo.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            {/* Campos opcionales */}
+            <div>
+              <Label htmlFor="descripcion">Descripción</Label>
+              <Textarea
+                id="descripcion"
+                value={formData.descripcion ?? ""}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                rows={3}
+                placeholder="Descripción breve del caso"
+              />
             </div>
-          )}
-        </div>
 
-        {/* OFICIOS */}
-        <div className="space-y-4 pt-6 border-t">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">Oficios</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => openEditItem("oficio")}>
-              <Plus className="h-4 w-4 mr-1" /> Agregar Oficio
-            </Button>
-          </div>
-          {(!formData.oficios || formData.oficios.length === 0) ? (
-            <p className="text-sm text-muted-foreground italic">No hay oficios agregados aún.</p>
-          ) : (
-            <div className="space-y-3">
-              {formData.oficios.map((oficio) => (
-                <div key={oficio.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                  <div className="flex-1 flex items-center gap-4">
-                    <Checkbox
-                      checked={oficio.entregado}
-                      onCheckedChange={() => toggleEntregado("oficio", oficio.id)}
-                    />
-                    <div>
-                      <p className={cn("font-medium", oficio.entregado && "line-through text-muted-foreground")}>
-                        {oficio.titulo}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {oficio.fechaEntrega && `${formatLocalDate(oficio.fechaEntrega)} — `}
-                        {oficio.entregado ? "Entregado" : "Pendiente"}
-                        {oficio.descripcion && ` — ${oficio.descripcion.substring(0, 50)}${oficio.descripcion.length > 50 ? "..." : ""}`}
-                      </p>
+            <div>
+              <Label htmlFor="homologacionSentencia">Homologación / Sentencia</Label>
+              <Textarea
+                id="homologacionSentencia"
+                value={formData.homologacionSentencia ?? ""}
+                onChange={(e) => setFormData({ ...formData, homologacionSentencia: e.target.value })}
+                rows={4}
+              />
+            </div>
+
+            {isSRTorART && (
+              <div>
+                <Label htmlFor="patologia">Patología</Label>
+                <Textarea
+                  id="patologia"
+                  value={formData.patologia ?? ""}
+                  onChange={(e) => setFormData({ ...formData, patologia: e.target.value })}
+                  rows={3}
+                  placeholder="Descripción médica detallada"
+                />
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Tab: Plazos, Oficios y Tareas */}
+          <TabsContent value="seguimiento" className="mt-6 space-y-6">
+            {/* PLAZOS */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Plazos del Caso</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => openEditItem("plazo")}>
+                  <Plus className="h-4 w-4 mr-1" /> Agregar Plazo
+                </Button>
+              </div>
+              {(!formData.plazos || formData.plazos.length === 0) ? (
+                <p className="text-sm text-muted-foreground italic">No hay plazos agregados aún.</p>
+              ) : (
+                <div className="space-y-3">
+                  {formData.plazos.map((plazo) => (
+                    <div key={plazo.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                      <div className="flex-1">
+                        <p className="font-medium">{plazo.nombre}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {plazo.fecha ? formatLocalDate(plazo.fecha) : "Sin fecha"}
+                          {plazo.descripcion && ` — ${plazo.descripcion.substring(0, 60)}${plazo.descripcion.length > 60 ? "..." : ""}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("plazo", plazo)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("plazo", plazo.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("oficio", oficio)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("oficio", oficio.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        {/* TAREAS */}
-        <div className="space-y-4 pt-6 border-t">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">Tareas</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => openEditItem("tarea")}>
-              <Plus className="h-4 w-4 mr-1" /> Agregar Tarea
-            </Button>
-          </div>
-          {(!formData.tareas || formData.tareas.length === 0) ? (
-            <p className="text-sm text-muted-foreground italic">No hay tareas agregadas aún.</p>
-          ) : (
-            <div className="space-y-3">
-              {formData.tareas.map((tarea) => (
-                <div key={tarea.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                  <div className="flex-1 flex items-center gap-4">
-                    <Checkbox
-                      checked={tarea.entregado}
-                      onCheckedChange={() => toggleEntregado("tarea", tarea.id)}
-                    />
-                    <div>
-                      <p className={cn("font-medium", tarea.entregado && "line-through text-muted-foreground")}>
-                        {tarea.titulo}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {tarea.fechaEntrega && `${formatLocalDate(tarea.fechaEntrega)} — `}
-                        {tarea.entregado ? "Completada" : "Pendiente"}
-                        {tarea.descripcion && ` — ${tarea.descripcion.substring(0, 50)}${tarea.descripcion.length > 50 ? "..." : ""}`}
-                      </p>
+            {/* OFICIOS */}
+            <div className="space-y-4 pt-6 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Oficios</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => openEditItem("oficio")}>
+                  <Plus className="h-4 w-4 mr-1" /> Agregar Oficio
+                </Button>
+              </div>
+              {(!formData.oficios || formData.oficios.length === 0) ? (
+                <p className="text-sm text-muted-foreground italic">No hay oficios agregados aún.</p>
+              ) : (
+                <div className="space-y-3">
+                  {formData.oficios.map((oficio) => (
+                    <div key={oficio.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                      <div className="flex-1 flex items-center gap-4">
+                        <Checkbox
+                          checked={oficio.entregado}
+                          onCheckedChange={() => toggleEntregado("oficio", oficio.id)}
+                        />
+                        <div>
+                          <p className={cn("font-medium", oficio.entregado && "line-through text-muted-foreground")}>
+                            {oficio.titulo}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {oficio.fechaEntrega && `${formatLocalDate(oficio.fechaEntrega)} — `}
+                            {oficio.entregado ? "Entregado" : "Pendiente"}
+                            {oficio.descripcion && ` — ${oficio.descripcion.substring(0, 50)}${oficio.descripcion.length > 50 ? "..." : ""}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("oficio", oficio)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("oficio", oficio.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("tarea", tarea)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("tarea", tarea.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+
+            {/* TAREAS */}
+            <div className="space-y-4 pt-6 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Tareas</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => openEditItem("tarea")}>
+                  <Plus className="h-4 w-4 mr-1" /> Agregar Tarea
+                </Button>
+              </div>
+              {(!formData.tareas || formData.tareas.length === 0) ? (
+                <p className="text-sm text-muted-foreground italic">No hay tareas agregadas aún.</p>
+              ) : (
+                <div className="space-y-3">
+                  {formData.tareas.map((tarea) => (
+                    <div key={tarea.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                      <div className="flex-1 flex items-center gap-4">
+                        <Checkbox
+                          checked={tarea.entregado}
+                          onCheckedChange={() => toggleEntregado("tarea", tarea.id)}
+                        />
+                        <div>
+                          <p className={cn("font-medium", tarea.entregado && "line-through text-muted-foreground")}>
+                            {tarea.titulo}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {tarea.fechaEntrega && `${formatLocalDate(tarea.fechaEntrega)} — `}
+                            {tarea.entregado ? "Completada" : "Pendiente"}
+                            {tarea.descripcion && ` — ${tarea.descripcion.substring(0, 50)}${tarea.descripcion.length > 50 ? "..." : ""}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("tarea", tarea)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("tarea", tarea.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Botones finales del formulario principal */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t -mx-6 px-6 pb-6 bg-background sticky bottom-0">
+        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 mt-6 border-t -mx-6 px-6 pb-6 bg-background sticky bottom-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>

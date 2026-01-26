@@ -133,7 +133,7 @@ export default function DashboardPage() {
             <AlertCircle className="h-5 w-5 text-amber-500" />
             <AlertTitle className="text-amber-500">Control SAC / Oficios</AlertTitle>
             <AlertDescription className="text-foreground">
-              Verificar oficios pendientes y controlar sistema SAC hoy.
+              Verificar oficios pendientes y controlar sistema SAC.
             </AlertDescription>
           </Alert>
         </div>
