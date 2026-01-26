@@ -4,12 +4,12 @@ import { AppLayout } from "@/components/app-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, Briefcase, CalendarIcon, Users, Key, ChevronRight } from "lucide-react"
+import { AlertCircle, Briefcase, CalendarIcon, Users, Key, ChevronRight, FileText, CheckCircle2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
-import type { Case } from "@/lib/types"  // Event no se usa directamente aquí
+import type { Case } from "@/lib/types"
 import Link from "next/link"
 
 const ADMIN_UID = "SWuK09UZJ5fJ6YSPtcNFDVRePbV2"
@@ -20,15 +20,15 @@ export default function DashboardPage() {
     casosActivos: 0,
     proximosVencimientos: 0,
     eventosHoy: 0,
+    pendientesTotales: 0,
   })
-  const [isClient, setIsClient] = useState(false)  // ← Nuevo estado para controlar hidratación
+  const [isClient, setIsClient] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const isAdmin = user?.uid === ADMIN_UID
 
-  // Este effect asegura que solo renderizamos los datos reales después de estar en cliente
   useEffect(() => {
-    setIsClient(true)  // Marca que ya estamos en el cliente
+    setIsClient(true)
 
     const fetchStats = async () => {
       if (!user) {
@@ -40,20 +40,21 @@ export default function DashboardPage() {
         let casosActivos = 0
         let proximosVencimientos = 0
         let eventosHoy = 0
+        let pendientesTotales = 0
 
         const casesQuery = query(collection(db, "cases"))
         const casesSnap = await getDocs(casesQuery)
         casosActivos = casesSnap.size
 
-        // Todo el manejo de fechas ahora es 100% en cliente
         const now = new Date()
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Más robusto que setHours
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         const nextWeek = new Date(today)
         nextWeek.setDate(today.getDate() + 7)
         nextWeek.setHours(23, 59, 59, 999)
 
         casesSnap.forEach((doc) => {
           const caso = doc.data() as Case
+          
           if (caso.plazos?.length) {
             caso.plazos.forEach((plazo) => {
               if (!plazo.fecha) return
@@ -63,9 +64,14 @@ export default function DashboardPage() {
               }
             })
           }
+
+          // Conteo de Pendientes (Oficios + Tareas no entregados)
+          const oficiosCount = caso.oficios?.filter(o => !o.entregado).length || 0
+          const tareasCount = caso.tareas?.filter(t => !t.entregado).length || 0
+          pendientesTotales += (oficiosCount + tareasCount)
         })
 
-        const todayStr = today.toISOString().slice(0, 10) // "YYYY-MM-DD"
+        const todayStr = today.toISOString().slice(0, 10)
         const eventsQuery = query(
           collection(db, "events"),
           where("fecha", "==", todayStr)
@@ -77,6 +83,7 @@ export default function DashboardPage() {
           casosActivos,
           proximosVencimientos,
           eventosHoy,
+          pendientesTotales
         })
       } catch (error) {
         console.error("Error fetching dashboard stats:", error)
@@ -88,7 +95,6 @@ export default function DashboardPage() {
     fetchStats()
   }, [user])
 
-  // Mientras no estamos hidratados o estamos cargando → skeleton idéntico al dashboard real
   const showSkeleton = !isClient || loading
 
   return (
@@ -116,7 +122,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Alertas (siempre visibles, no dependen de datos dinámicos) */}
+        {/* Alertas fijas */}
         <div className="grid gap-4 mb-8 grid-cols-1 md:grid-cols-2">
           <Alert className="border-blue-500/50 bg-blue-500/10">
             <Key className="h-5 w-5 text-blue-500" />
@@ -133,18 +139,17 @@ export default function DashboardPage() {
             <AlertCircle className="h-5 w-5 text-amber-500" />
             <AlertTitle className="text-amber-500">Control SAC / Oficios</AlertTitle>
             <AlertDescription className="text-foreground">
-              Verificar oficios pendientes y controlar sistema SAC.
+              Verificar oficios pendientes y controlar sistema SAC hoy.
             </AlertDescription>
           </Alert>
         </div>
 
         {/* Cards de estadísticas */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Casos Activos
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Casos Activos</CardTitle>
               <Briefcase className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -157,36 +162,48 @@ export default function DashboardPage() {
 
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Vencimientos Próximos
-              </CardTitle>
-              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Vencimientos</CardTitle>
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
                 {showSkeleton ? "—" : stats.proximosVencimientos}
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">Plazos en los próximos 7 días</p>
+              <p className="mt-2 text-sm text-muted-foreground">Próximos 7 días</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Eventos Hoy
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Eventos Hoy</CardTitle>
               <CalendarIcon className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl sm:text-4xl font-bold text-foreground">
                 {showSkeleton ? "—" : stats.eventosHoy}
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">Reuniones y audiencias</p>
+              <p className="mt-2 text-sm text-muted-foreground">Agenda diaria</p>
             </CardContent>
           </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pendientes</CardTitle>
+              <FileText className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl sm:text-4xl font-bold text-foreground">
+                {showSkeleton ? "—" : stats.pendientesTotales}
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Oficios y tareas
+              </p>
+            </CardContent>
+          </Card>
+
         </div>
 
-        {/* Spinner centrado solo mientras carga (opcional, queda más limpio sin él) */}
         {loading && isClient && (
           <div className="flex justify-center mt-8">
             <div className="h-8 w-8 animate-spin rounded-full border-t-4 border-b-4 border-primary"></div>

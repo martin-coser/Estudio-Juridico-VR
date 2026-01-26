@@ -68,7 +68,7 @@ async function sendSmsToAll(message: string) {
 export async function GET() {
   try {
     const ahoraDate = new Date();
-    const LIMITE_3_DIAS_MS = 3 * 24 * 60 * 60 * 1000;
+    const LIMITE_3_DIAS_MS = 2 * 24 * 60 * 60 * 1000;
     const tiempoAhora = ahoraDate.getTime();
     const tiempoLimite = tiempoAhora + LIMITE_3_DIAS_MS;
 
