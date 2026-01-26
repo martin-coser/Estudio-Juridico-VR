@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+// 1. Agregamos el icono de Eye y EyeOff
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Scale, CheckCircle2, AlertCircle } from "lucide-react"
+import { Scale, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react" 
 import { 
   setPersistence, 
   browserLocalPersistence, 
@@ -22,6 +23,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false) // Nuevo estado para la visibilidad
   const [rememberMe, setRememberMe] = useState(false)
   const [isRegister, setIsRegister] = useState(false)
   const [error, setError] = useState("")
@@ -74,8 +76,6 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error("Firebase Error Code:", err.code)
-      
-      // Personalización de mensajes de error
       if (!isRegister) {
         if (
           err.code === "auth/invalid-credential" || 
@@ -105,8 +105,8 @@ export default function LoginPage() {
               <Scale className="w-8 h-8 text-accent-foreground" />
             </div>
             <div>
-              <CardTitle className="text-2xl font-bold">Estudio Jurídico VR</CardTitle>
-              <CardDescription className="text-muted-foreground font-medium">
+              <CardTitle className="text-2xl font-bold">Estudio Jurídico</CardTitle>
+              <CardDescription className="text-muted-foreground font-medium text-lg">
                 Valentina Reineri
               </CardDescription>
               <p className="text-sm text-muted-foreground/70 mt-1">
@@ -160,16 +160,32 @@ export default function LoginPage() {
                           ¿Olvidaste tu contraseña?
                         </button>
                       </div>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required={!isRegister}
-                        disabled={loading}
-                        className="h-11"
-                      />
+                      
+                      {/* Contenedor relativo para posicionar el botón del ojo */}
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required={!isRegister}
+                          disabled={loading}
+                          className="h-11 pr-10" // Padding derecho para que el texto no tape el icono
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          disabled={loading}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex items-center space-x-2 py-2">
@@ -204,6 +220,7 @@ export default function LoginPage() {
                   setIsRegister(!isRegister)
                   setSuccess("")
                   setError("")
+                  setShowPassword(false) // Resetear visibilidad al cambiar modo
                 }}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
               >
