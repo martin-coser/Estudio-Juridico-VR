@@ -229,28 +229,59 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                   {caseData.plazos.map((plazo) => {
                     const overdue = isOverdue(plazo.fecha)
                     const soon = !overdue && isSoon(plazo.fecha)
+                    const cumplido = plazo.cumplido === true
+
                     return (
                       <div
                         key={plazo.id}
                         className={cn(
                           "rounded-lg border p-4 transition-all",
-                          overdue && "border-destructive/50 bg-destructive/5",
-                          soon && "border-orange-500/50 bg-orange-500/5"
+                          overdue && !cumplido && "border-destructive/50 bg-destructive/5",
+                          soon && !cumplido && "border-orange-500/50 bg-orange-500/5",
+                          cumplido && "bg-muted/40 border-muted"
                         )}
                       >
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <p className="font-semibold text-foreground">{plazo.nombre}</p>
-                            {plazo.descripcion && (
-                              <p className="text-sm text-muted-foreground mt-1">{plazo.descripcion}</p>
-                            )}
+                          <div className="flex-1 flex items-center gap-4">
+                            <Checkbox 
+                              checked={cumplido} 
+                              disabled 
+                              className={cumplido ? "text-green-600" : ""}
+                            />
+                            <div>
+                              <p className={cn(
+                                "font-semibold",
+                                cumplido && "line-through text-muted-foreground"
+                              )}>
+                                {plazo.nombre}
+                              </p>
+                              {plazo.descripcion && (
+                                <p className="text-sm text-muted-foreground mt-1">{plazo.descripcion}</p>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right">
-                            <p className={cn("font-medium", overdue && "text-destructive", soon && "text-orange-600")}>
+                            <p className={cn(
+                              "font-medium",
+                              overdue && !cumplido && "text-destructive",
+                              soon && !cumplido && "text-orange-600",
+                              cumplido && "text-muted-foreground"
+                            )}>
                               {formatDate(plazo.fecha)}
                             </p>
-                            {overdue && <Badge variant="destructive" className="mt-1 text-xs">Vencido</Badge>}
-                            {soon && <Badge className="mt-1 text-xs bg-orange-500 text-white">Próximo</Badge>}
+                            <div className="mt-1 flex justify-end gap-2">
+                              {cumplido && (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+                                  Cumplido
+                                </Badge>
+                              )}
+                              {overdue && !cumplido && (
+                                <Badge variant="destructive" className="text-xs">Vencido</Badge>
+                              )}
+                              {soon && !cumplido && !overdue && (
+                                <Badge className="text-xs bg-orange-500 text-white">Próximo</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -295,7 +326,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Checkbox checked={oficio.entregado} disabled />
+                            <Checkbox checked={oficio.entregado ?? false} disabled />
                             <span className={cn("text-sm font-medium", oficio.entregado ? "text-green-600" : "text-muted-foreground")}>
                               {oficio.entregado ? "Entregado" : "Pendiente"}
                             </span>
@@ -345,7 +376,7 @@ export function CaseDetailsDialog({ open, onOpenChange, caseData }: CaseDetailsD
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Checkbox checked={tarea.entregado} disabled />
+                            <Checkbox checked={tarea.entregado ?? false} disabled />
                             <span className={cn("text-sm font-medium", tarea.entregado ? "text-green-600" : "text-muted-foreground")}>
                               {tarea.entregado ? "Completada" : "Pendiente"}
                             </span>

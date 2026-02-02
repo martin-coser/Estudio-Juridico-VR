@@ -44,9 +44,9 @@ interface CaseDialogProps {
   onSuccess: () => void
 }
 
-const caseTypes = ["SRT", "ART", "FAMILIA", "LABORAL DESPIDOS", "DAÑOS Y PERJUICIOS", "OTRO"] as const
+const caseTypes = ["SRT", "ART", "FAMILIA", "LABORAL DESPIDOS", "DAÑOS Y PERJUICIOS", "OTRO","DECLARATORIAS","JUICIOS ANSES","JUBILACIONES Y PENSIONES"] as const
 
-const localidades = ["Río Cuarto", "Villa María", "Alta Gracia"] as const
+const localidades = ["Río Cuarto", "Villa María", "Río Tercero"] as const
 
 const tiposProceso = [
   "Ordinario",
@@ -187,7 +187,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
     setEditingItem(item || {
       id: Date.now().toString(),
       ...(type === "plazo"
-        ? { nombre: "", descripcion: "", fecha: "" }
+        ? { nombre: "", descripcion: "", fecha: "", cumplido: false }
         : { titulo: "", descripcion: "", fechaEntrega: "", entregado: false }),
     } as Plazo | Oficio | Tarea)
   }
@@ -232,6 +232,15 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
       [arrayKey]: (prev[arrayKey] as any[])?.map((item: any) =>
         item.id === id ? { ...item, entregado: !item.entregado } : item
       ) ?? [],
+    }))
+  }
+
+  const togglePlazoCumplido = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      plazos: (prev.plazos ?? []).map((plazo) =>
+        plazo.id === id ? { ...plazo, cumplido: !plazo.cumplido } : plazo
+      ),
     }))
   }
 
@@ -466,24 +475,49 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
                   <Plus className="h-4 w-4 mr-1" /> Agregar Plazo
                 </Button>
               </div>
+
               {(!formData.plazos || formData.plazos.length === 0) ? (
                 <p className="text-sm text-muted-foreground italic">No hay plazos agregados aún.</p>
               ) : (
                 <div className="space-y-3">
                   {formData.plazos.map((plazo) => (
-                    <div key={plazo.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                      <div className="flex-1">
-                        <p className="font-medium">{plazo.nombre}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {plazo.fecha ? formatLocalDate(plazo.fecha) : "Sin fecha"}
-                          {plazo.descripcion && ` — ${plazo.descripcion.substring(0, 60)}${plazo.descripcion.length > 60 ? "..." : ""}`}
-                        </p>
+                    <div 
+                      key={plazo.id} 
+                      className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                    >
+                      <div className="flex-1 flex items-center gap-4">
+                        <Checkbox
+                          checked={plazo.cumplido ?? false}
+                          onCheckedChange={() => togglePlazoCumplido(plazo.id)}
+                        />
+                        <div>
+                          <p className={cn(
+                            "font-medium",
+                            plazo.cumplido && "line-through text-muted-foreground"
+                          )}>
+                            {plazo.nombre}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {plazo.fecha ? formatLocalDate(plazo.fecha) : "Sin fecha"}
+                            {plazo.descripcion && ` — ${plazo.descripcion.substring(0, 60)}${plazo.descripcion.length > 60 ? "..." : ""}`}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button type="button" size="icon" variant="ghost" onClick={() => openEditItem("plazo", plazo)}>
+                        <Button 
+                          type="button" 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => openEditItem("plazo", plazo)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button type="button" size="icon" variant="ghost" onClick={() => deleteItem("plazo", plazo.id)}>
+                        <Button 
+                          type="button" 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => deleteItem("plazo", plazo.id)}
+                        >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -612,9 +646,7 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
       >
         <DialogContent
           className="sm:max-w-lg max-h-[90vh] overflow-y-auto"
-          // Bloqueo clave para móviles: evita cierre por toque fuera
           onInteractOutside={(e) => e.preventDefault()}
-          // Controlamos Escape manualmente
           onEscapeKeyDown={(e) => {
             e.preventDefault()
             closeEditItem()
@@ -638,15 +670,33 @@ export function CaseDialog({ open, onOpenChange, caseData, onSuccess }: CaseDial
                     required
                   />
                 </div>
+
                 <div>
                   <Label>Fecha *</Label>
                   <Input
                     type="date"
-                    value={(editingItem as Plazo).fecha}
+                    value={(editingItem as Plazo).fecha || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, fecha: e.target.value })}
                     required
                   />
                 </div>
+
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox
+                    id="plazo-cumplido"
+                    checked={(editingItem as Plazo).cumplido ?? false}
+                    onCheckedChange={(checked) =>
+                      setEditingItem({ ...editingItem, cumplido: !!checked })
+                    }
+                  />
+                  <Label
+                    htmlFor="plazo-cumplido"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Plazo cumplido
+                  </Label>
+                </div>
+
                 <div>
                   <Label>Descripción</Label>
                   <Textarea

@@ -17,7 +17,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ClientDialog } from "@/components/client-dialog"
-import { Plus, Search, Pencil, Trash2, Phone, Mail, IdCard, Calendar, DollarSign, AlertCircle, FileText, Filter } from "lucide-react"
+import { ClientDetailsDialog } from "@/components/client-details-dialog" // ← nuevo import
+import { Plus, Search, Pencil, Trash2, Phone, Mail, IdCard, Calendar, DollarSign, AlertCircle, FileText, Filter, Eye } from "lucide-react"
 import { useEffect, useState } from "react"
 import { collection, getDocs, deleteDoc, doc, orderBy, query } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -29,12 +30,13 @@ export default function ClientesPage() {
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | undefined>()
   const [searchTerm, setSearchTerm] = useState("")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
   const [paymentFilter, setPaymentFilter] = useState<"all" | "debe" | "pagado">("all")
-  const [clientDebts, setClientDebts] = useState<Record<string, Case[]>>({}) // Deudas por clienteId
+  const [clientDebts, setClientDebts] = useState<Record<string, Case[]>>({}) // deudas por casos
   const { toast } = useToast()
 
   const fetchClientsAndDebts = async () => {
@@ -48,7 +50,7 @@ export default function ClientesPage() {
         ...doc.data(),
       })) as Client[]
 
-      // Fetch cases to calculate debts
+      // Fetch cases para deudas asociadas
       const casesRef = collection(db, "cases")
       const casesSnap = await getDocs(casesRef)
       const allCases = casesSnap.docs.map((doc) => ({
@@ -56,7 +58,7 @@ export default function ClientesPage() {
         ...doc.data(),
       })) as Case[]
 
-      // Map debts per client
+      // Map de deudas por caso
       const debtsMap: Record<string, Case[]> = {}
       clientsData.forEach((client) => {
         debtsMap[client.id] = allCases.filter(
@@ -81,7 +83,6 @@ export default function ClientesPage() {
   useEffect(() => {
     let filtered = clients
 
-    // Filtro por búsqueda
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(
@@ -89,15 +90,22 @@ export default function ClientesPage() {
           client.nombre.toLowerCase().includes(term) ||
           (client.email && client.email.toLowerCase().includes(term)) ||
           client.dni_cuit.includes(term) ||
-          client.telefono.includes(term)
+          (client.telefono && client.telefono.includes(term))
       )
     }
 
-    // Filtro por estado de pago (debe/pagado)
     if (paymentFilter === "debe") {
-      filtered = filtered.filter((client) => (clientDebts[client.id] || []).length > 0)
+      filtered = filtered.filter((client) => {
+        const casoDebts = (clientDebts[client.id] || []).length
+        const directDebts = (client.deudas || []).filter(d => !d.pagado).length
+        return casoDebts > 0 || directDebts > 0
+      })
     } else if (paymentFilter === "pagado") {
-      filtered = filtered.filter((client) => (clientDebts[client.id] || []).length === 0)
+      filtered = filtered.filter((client) => {
+        const casoDebts = (clientDebts[client.id] || []).length
+        const directDebts = (client.deudas || []).filter(d => !d.pagado).length
+        return casoDebts === 0 && directDebts === 0
+      })
     }
 
     setFilteredClients(filtered)
@@ -106,6 +114,11 @@ export default function ClientesPage() {
   const handleEdit = (client: Client) => {
     setSelectedClient(client)
     setDialogOpen(true)
+  }
+
+  const handleViewDetails = (client: Client) => {
+    setSelectedClient(client)
+    setDetailsOpen(true)
   }
 
   const handleDelete = async () => {
@@ -150,11 +163,14 @@ export default function ClientesPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Filtros</CardTitle>
-            <CardDescription>{filteredClients.length} cliente{filteredClients.length !== 1 && "s"} encontrado{filteredClients.length !== 1 && "s"}</CardDescription>
+            <CardDescription>
+              {filteredClients.length} cliente{filteredClients.length !== 1 && "s"} encontrado{filteredClients.length !== 1 && "s"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
-              <div className="relative col-span-1 sm:col-span-2 lg:col-span-6">
+              {/* Búsqueda - más espacio */}
+              <div className="relative col-span-1 sm:col-span-2 lg:col-span-5 xl:col-span-5">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nombre, email, teléfono o DNI/CUIT..."
@@ -164,9 +180,10 @@ export default function ClientesPage() {
                 />
               </div>
 
-              <div className="lg:col-span-2">
+              {/* Filtro de estado de pago */}
+              <div className="lg:col-span-3 xl:col-span-3">
                 <Select value={paymentFilter} onValueChange={(value: "all" | "debe" | "pagado") => setPaymentFilter(value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Estado de pago" />
                   </SelectTrigger>
                   <SelectContent>
@@ -177,17 +194,18 @@ export default function ClientesPage() {
                 </Select>
               </div>
 
-              <div className="lg:col-span-2 flex items-end">
+              {/* Botón Limpiar filtros - más ancho y protegido */}
+              <div className="lg:col-span-4 xl:col-span-4 flex items-end">
                 <Button
                   variant="outline"
                   onClick={() => {
                     setSearchTerm("")
                     setPaymentFilter("all")
                   }}
-                  className="w-full"
+                  className="w-full max-w-full overflow-hidden"
                 >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Limpiar filtros
+                  <Filter className="mr-2 h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Limpiar filtros</span>
                 </Button>
               </div>
             </div>
@@ -212,8 +230,10 @@ export default function ClientesPage() {
             {/* Vista móvil: Cards */}
             <div className="grid gap-4 md:hidden">
               {filteredClients.map((client) => {
-                const debts = clientDebts[client.id] || []
-                const hasDebts = debts.length > 0
+                const casoDebts = clientDebts[client.id] || []
+                const directDebts = (client.deudas || []).filter(d => !d.pagado)
+                const totalDebts = casoDebts.length + directDebts.length
+                const hasDebts = totalDebts > 0
 
                 return (
                   <Card key={client.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
@@ -234,11 +254,11 @@ export default function ClientesPage() {
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span>{client.telefono}</span>
+                          <span>{client.telefono || "-"}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate">{client.email}</span>
+                          <span className="truncate">{client.email || "-"}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -250,22 +270,35 @@ export default function ClientesPage() {
                         <div className="mt-4 border-t pt-4">
                           <p className="text-sm font-semibold text-destructive flex items-center gap-2 mb-2">
                             <DollarSign className="h-4 w-4" />
-                            Deudas pendientes ({debts.length})
+                            Deudas pendientes ({totalDebts})
                           </p>
-                          <ul className="space-y-2 text-sm text-muted-foreground">
-                            {debts.map((debtCase) => (
-                              <li key={debtCase.id} className="flex items-center gap-2">
-                                <FileText className="h-4 w-4" />
-                                <span className="truncate">
-                                  (Exp: {debtCase.expediente || "N/A"})
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                          {casoDebts.length > 0 && (
+                            <div className="mb-2">
+                              <p className="text-xs font-medium">Por expedientes:</p>
+                              <ul className="text-xs text-muted-foreground pl-4 list-disc">
+                                {casoDebts.map((c) => (
+                                  <li key={c.id}>Exp: {c.expediente || "N/A"}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {directDebts.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium">Directas:</p>
+                              <ul className="text-xs text-muted-foreground pl-4 list-disc">
+                                {directDebts.map((d) => (
+                                  <li key={d.id}>{d.concepto} - ${d.monto.toLocaleString("es-AR")}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       )}
 
                       <div className="flex justify-end gap-2 pt-3 border-t">
+                        <Button size="sm" variant="outline" onClick={() => handleViewDetails(client)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(client)}>
                           <Pencil className="h-4 w-4 mr-1" /> Editar
                         </Button>
@@ -302,27 +335,31 @@ export default function ClientesPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredClients.map((client) => {
-                    const debts = clientDebts[client.id] || []
-                    const hasDebts = debts.length > 0
+                    const casoDebts = clientDebts[client.id] || []
+                    const directDebts = (client.deudas || []).filter(d => !d.pagado)
+                    const totalDebts = casoDebts.length + directDebts.length
 
                     return (
                       <TableRow key={client.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{client.nombre}</TableCell>
-                        <TableCell>{client.telefono}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{client.email}</TableCell>
+                        <TableCell>{client.telefono || "-"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{client.email || "-"}</TableCell>
                         <TableCell className="font-mono text-sm">{client.dni_cuit}</TableCell>
                         <TableCell>{client.fechaAlta || "-"}</TableCell>
                         <TableCell>
-                          {hasDebts ? (
+                          {totalDebts > 0 ? (
                             <div className="space-y-1">
-                              <p className="text-destructive font-medium">{debts.length} deudas</p>
-                              <ul className="text-sm text-muted-foreground">
-                                {debts.map((debtCase) => (
-                                  <li key={debtCase.id} className="truncate">
-                                    Exp: {debtCase.expediente || "N/A"}
-                                  </li>
-                                ))}
-                              </ul>
+                              <p className="text-destructive font-medium">{totalDebts} deuda{totalDebts !== 1 && "s"}</p>
+                              {casoDebts.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  {casoDebts.length} por expedientes
+                                </p>
+                              )}
+                              {directDebts.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  {directDebts.length} directa{directDebts.length !== 1 && "s"}
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground">Sin deudas</span>
@@ -330,6 +367,9 @@ export default function ClientesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleViewDetails(client)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleEdit(client)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -361,6 +401,15 @@ export default function ClientesPage() {
           client={selectedClient}
           onSuccess={fetchClientsAndDebts}
         />
+
+        {selectedClient && (
+          <ClientDetailsDialog
+            open={detailsOpen}
+            onOpenChange={setDetailsOpen}
+            client={selectedClient}
+            clientCases={clientDebts[selectedClient.id] || []}
+          />
+        )}
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>

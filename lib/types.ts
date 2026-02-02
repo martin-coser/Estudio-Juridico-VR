@@ -6,13 +6,15 @@ export interface Client {
   dni_cuit: string
   fechaAlta: string
   createdAt: number
+  deudas?: Deuda[]
 }
 
 export interface Plazo {
   id: string                 
   nombre: string             
   descripcion?: string       
-  fecha: string              
+  fecha: string
+  cumplido?: boolean              
 }
 
 export type Oficio = {
@@ -33,7 +35,7 @@ export type Tarea = {
 
 export interface Case {
   id: string
-  tipo?: "SRT" | "ART" | "FAMILIA" | "LABORAL DESPIDOS" | "DAÑOS Y PERJUICIOS" | "OTRO"  
+  tipo?: "SRT"| "ART"| "FAMILIA"| "LABORAL DESPIDOS"| "DAÑOS Y PERJUICIOS"| "OTRO"| "DECLARATORIAS"| "JUICIOS ANSES"| "JUBILACIONES Y PENSIONES"
   caratula: string
   clienteId: string
   clienteNombre?: string
@@ -71,4 +73,13 @@ export interface Notification {
   leida: boolean
   fecha: string
   createdAt: number
+}
+
+export interface Deuda {
+  id: string                
+  concepto: string           
+  fecha: string             
+  monto: number               
+  pagado?: boolean         
+  createdAt?: number          
 }

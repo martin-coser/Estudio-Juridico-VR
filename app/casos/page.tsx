@@ -54,11 +54,36 @@ const formatDate = (dateString: string | undefined): string => {
   })
 }
 
-// Próximo plazo futuro
-const getNextUpcomingDeadline = (plazos: Case["plazos"] = []) => {
+// Función auxiliar para obtener el timestamp en milisegundos de createdAt de forma segura
+const getCreatedAtMillis = (createdAt: any): number => {
+  if (!createdAt) return 0
+
+  // Caso: Timestamp de Firebase
+  if (createdAt && typeof createdAt.toMillis === "function") {
+    return createdAt.toMillis()
+  }
+
+  // Caso: ya es Date
+  if (createdAt instanceof Date) {
+    return createdAt.getTime()
+  }
+
+  // Caso: número (timestamp en milisegundos)
+  if (typeof createdAt === "number") {
+    return createdAt
+  }
+
+  // Caso fallback
+  return 0
+}
+
+// Próximo plazo futuro (solo considera plazos NO cumplidos y caso NO inactivo)
+const getNextUpcomingDeadline = (plazos: Case["plazos"] = [], estado?: string) => {
+  if (estado?.toLowerCase() === "inactivo") return null
+
   if (!plazos || plazos.length === 0) return null
   const validPlazos = plazos
-    .filter(p => p.fecha)
+    .filter(p => p.fecha && p.cumplido !== true)
     .map(p => ({ ...p, dateObj: parseDateAsLocal(p.fecha!) }))
     .filter(p => p.dateObj >= todayStart)
 
@@ -68,28 +93,34 @@ const getNextUpcomingDeadline = (plazos: Case["plazos"] = []) => {
   return validPlazos[0]
 }
 
-// Plazos vencidos
-const hasOverdueDeadline = (plazos: Case["plazos"] = []) => {
+// Plazos vencidos (solo si NO está cumplido y caso NO inactivo)
+const hasOverdueDeadline = (plazos: Case["plazos"] = [], estado?: string) => {
+  if (estado?.toLowerCase() === "inactivo") return false
   return plazos.some(p => {
-    if (!p.fecha) return false
+    if (!p.fecha || p.cumplido === true) return false
     const plazoDate = parseDateAsLocal(p.fecha)
     return plazoDate < todayStart
   })
 }
 
-// Plazos próximos (7 días)
-const hasDeadlineSoon = (plazos: Case["plazos"] = []) => {
+// Plazos próximos (7 días) (solo si NO está cumplido y caso NO inactivo)
+const hasDeadlineSoon = (plazos: Case["plazos"] = [], estado?: string) => {
+  if (estado?.toLowerCase() === "inactivo") return false
   return plazos.some(p => {
-    if (!p.fecha) return false
+    if (!p.fecha || p.cumplido === true) return false
     const plazoDate = parseDateAsLocal(p.fecha)
-    return plazoDate >= todayStart && plazoDate <= sevenDaysFromNowStart
+    if (plazoDate < todayStart) return false
+    const diffTime = plazoDate.getTime() - todayStart.getTime()
+    const diffDays = diffTime / (1000 * 60 * 60 * 24)
+    return diffDays <= 7
   })
 }
 
 // Alerta general
-const getCaseAlertStatus = (plazos: Case["plazos"] = []) => {
-  if (hasOverdueDeadline(plazos)) return "overdue"
-  if (hasDeadlineSoon(plazos)) return "soon"
+const getCaseAlertStatus = (plazos: Case["plazos"] = [], estado?: string) => {
+  if (estado?.toLowerCase() === "inactivo") return null
+  if (hasOverdueDeadline(plazos, estado)) return "overdue"
+  if (hasDeadlineSoon(plazos, estado)) return "soon"
   return null
 }
 
@@ -142,11 +173,27 @@ export default function CasosPage() {
   }, [])
 
   useEffect(() => {
-    let filtered = cases
+    let result = [...cases]
 
+    // Ordenamos: activos primero, inactivos al final
+    result.sort((a, b) => {
+      const aEsInactivo = (a.estado || "").toLowerCase() === "inactivo"
+      const bEsInactivo = (b.estado || "").toLowerCase() === "inactivo"
+
+      if (aEsInactivo && !bEsInactivo) return 1
+      if (!aEsInactivo && bEsInactivo) return -1
+
+      // Ambos activos o ambos inactivos → orden por fecha descendente
+      const timeA = getCreatedAtMillis(a.createdAt)
+      const timeB = getCreatedAtMillis(b.createdAt)
+
+      return timeB - timeA // más reciente primero
+    })
+
+    // Aplicamos los filtros
     if (filters.search) {
       const term = filters.search.toLowerCase()
-      filtered = filtered.filter(
+      result = result.filter(
         (c) =>
           c.caratula?.toLowerCase().includes(term) ||
           c.expediente?.toLowerCase().includes(term) ||
@@ -155,14 +202,14 @@ export default function CasosPage() {
     }
 
     if (filters.tipo !== "all") {
-      filtered = filtered.filter((c) => c.tipo === filters.tipo)
+      result = result.filter((c) => c.tipo === filters.tipo)
     }
 
     if (filters.estadoPago !== "all") {
-      filtered = filtered.filter((c) => c.estadoPago === filters.estadoPago)
+      result = result.filter((c) => c.estadoPago === filters.estadoPago)
     }
 
-    setFilteredCases(filtered)
+    setFilteredCases(result)
   }, [filters, cases])
 
   const handleEdit = (caseData: Case) => {
@@ -229,7 +276,7 @@ export default function CasosPage() {
                 </CardDescription>
               </div>
 
-              {/* Leyenda de íconos - solo visible en pantallas medianas y grandes */}
+              {/* Leyenda de íconos */}
               <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <span title="Plazos vencidos">
@@ -258,9 +305,11 @@ export default function CasosPage() {
               </div>
             </div>
           </CardHeader>
+
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
-              <div className="relative col-span-1 sm:col-span-2 lg:col-span-6">
+              {/* Búsqueda */}
+              <div className="relative col-span-1 sm:col-span-2 lg:col-span-5 xl:col-span-5">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por carátula, expediente o cliente..."
@@ -270,9 +319,10 @@ export default function CasosPage() {
                 />
               </div>
 
-              <div className="lg:col-span-2">
+              {/* Tipo de caso */}
+              <div className="lg:col-span-3 xl:col-span-3">
                 <Select value={filters.tipo} onValueChange={(value) => setFilters({ ...filters, tipo: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full truncate">
                     <SelectValue placeholder="Tipo de caso" />
                   </SelectTrigger>
                   <SelectContent>
@@ -283,13 +333,17 @@ export default function CasosPage() {
                     <SelectItem value="LABORAL DESPIDOS">LABORAL DESPIDOS</SelectItem>
                     <SelectItem value="DAÑOS Y PERJUICIOS">DAÑOS Y PERJUICIOS</SelectItem>
                     <SelectItem value="OTRO">OTRO</SelectItem>
+                    <SelectItem value="DECLARATORIAS">DECLARATORIAS</SelectItem>
+                    <SelectItem value="JUICIOS ANSES">JUICIOS ANSES</SelectItem>
+                    <SelectItem value="JUBILACIONES Y PENSIONES">JUBILACIONES Y PENSIONES</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="lg:col-span-2">
+              {/* Estado de pago */}
+              <div className="lg:col-span-2 xl:col-span-2">
                 <Select value={filters.estadoPago} onValueChange={(value) => setFilters({ ...filters, estadoPago: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Estado de pago" />
                   </SelectTrigger>
                   <SelectContent>
@@ -300,14 +354,15 @@ export default function CasosPage() {
                 </Select>
               </div>
 
-              <div className="lg:col-span-2 flex items-end">
+              {/* Limpiar filtros */}
+              <div className="lg:col-span-2 xl:col-span-2 flex items-end">
                 <Button
                   variant="outline"
                   onClick={() => setFilters({ search: "", tipo: "all", estadoPago: "all" })}
-                  className="w-full"
+                  className="w-full max-w-full overflow-hidden"
                 >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Limpiar filtros
+                  <Filter className="mr-2 h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Limpiar filtros</span>
                 </Button>
               </div>
             </div>
@@ -334,10 +389,10 @@ export default function CasosPage() {
             {/* Vista móvil: Cards */}
             <div className="grid gap-4 md:hidden">
               {filteredCases.map((caseData) => {
-                const nextUpcoming = getNextUpcomingDeadline(caseData.plazos)
-                const alertStatus = getCaseAlertStatus(caseData.plazos)
+                const alertStatus = getCaseAlertStatus(caseData.plazos, caseData.estado)
                 const pendingOficio = hasPendingOficio(caseData.oficios)
                 const pendingTarea = hasPendingTarea(caseData.tareas)
+                const nextUpcoming = getNextUpcomingDeadline(caseData.plazos, caseData.estado)
 
                 return (
                   <Card key={caseData.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
@@ -386,7 +441,11 @@ export default function CasosPage() {
                           <Calendar className={cn("h-4 w-4", alertStatus && "text-orange-500")} />
                           <div>
                             <p className="font-medium">
-                              {nextUpcoming ? `${nextUpcoming.nombre}: ${formatDate(nextUpcoming.fecha)}` : "Sin plazos próximos"}
+                              {nextUpcoming 
+                                ? nextUpcoming.cumplido 
+                                  ? `${nextUpcoming.nombre}: Cumplido`
+                                  : `${nextUpcoming.nombre}: ${formatDate(nextUpcoming.fecha)}`
+                                : "Sin plazos próximos"}
                             </p>
                             {caseData.plazos && caseData.plazos.length > 1 && nextUpcoming && (
                               <p className="text-xs text-muted-foreground">+{caseData.plazos.length - 1} más</p>
@@ -452,10 +511,10 @@ export default function CasosPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredCases.map((caseData) => {
-                    const nextUpcoming = getNextUpcomingDeadline(caseData.plazos)
-                    const alertStatus = getCaseAlertStatus(caseData.plazos)
+                    const alertStatus = getCaseAlertStatus(caseData.plazos, caseData.estado)
                     const pendingOficio = hasPendingOficio(caseData.oficios)
                     const pendingTarea = hasPendingTarea(caseData.tareas)
+                    const nextUpcoming = getNextUpcomingDeadline(caseData.plazos, caseData.estado)
 
                     return (
                       <TableRow key={caseData.id} className="hover:bg-muted/50">
@@ -494,10 +553,26 @@ export default function CasosPage() {
                           {nextUpcoming ? (
                             <div className="space-y-1">
                               <p className="font-medium">{nextUpcoming.nombre}</p>
-                              <p className={cn("text-sm", alertStatus === "soon" && "text-orange-500")}>
-                                {formatDate(nextUpcoming.fecha)}
-                                {caseData.plazos && caseData.plazos.length > 1 && ` (+${caseData.plazos.length - 1} más)`}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className={cn(
+                                  "text-sm",
+                                  alertStatus === "overdue" && "text-destructive",
+                                  alertStatus === "soon" && "text-orange-500",
+                                  nextUpcoming.cumplido && "text-green-600 line-through"
+                                )}>
+                                  {nextUpcoming.cumplido 
+                                    ? "Cumplido" 
+                                    : formatDate(nextUpcoming.fecha)}
+                                </p>
+                                {nextUpcoming.cumplido && (
+                                  <CheckSquare className="h-4 w-4 text-green-600" />
+                                )}
+                              </div>
+                              {caseData.plazos && caseData.plazos.length > 1 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{caseData.plazos.length - 1} más
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground">Sin plazos próximos</span>
