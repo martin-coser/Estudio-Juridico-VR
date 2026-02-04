@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth"
 import type { Case } from "@/lib/types"
 import Link from "next/link"
 
-const ADMIN_UID = "SWuK09UZJ5fJ6YSPtcNFDVRePbV2"
+const ADMIN_UID = "Ghk0CMPZxuc94lniK5Ig162vy8j1"
 
 export default function DashboardPage() {
   const { user } = useAuth()
