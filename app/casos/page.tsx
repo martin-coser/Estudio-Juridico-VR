@@ -494,130 +494,137 @@ export default function CasosPage() {
             </div>
 
             {/* Vista desktop: Tabla */}
-            <div className="hidden md:block rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-32">Alertas</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Expediente</TableHead>
-                    <TableHead>Carátula</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Próximo Plazo</TableHead>
-                    <TableHead>Estado de Pago</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCases.map((caseData) => {
-                    const alertStatus = getCaseAlertStatus(caseData.plazos, caseData.estado)
-                    const pendingOficio = hasPendingOficio(caseData.oficios)
-                    const pendingTarea = hasPendingTarea(caseData.tareas)
-                    const nextUpcoming = getNextUpcomingDeadline(caseData.plazos, caseData.estado)
+            {/* Vista desktop: Tabla - CORREGIDO PARA EVITAR SCROLL HORIZONTAL */}
+<div className="hidden md:block rounded-lg border">
+  <div className="overflow-x-auto"> {/* Contiene el scroll horizontal */}
+    <Table className="min-w-full [&_td]:py-2 [&_td]:px-3 [&_th]:py-2 [&_th]:px-3 text-sm"> {/* Compacto + ancho mínimo */}
+      <TableHeader>
+        <TableRow>
+          <TableHead className="min-w-[72px]">Alertas</TableHead> {/* Ancho mínimo ajustado */}
+          <TableHead>Tipo</TableHead>
+          <TableHead className="whitespace-nowrap">Expediente</TableHead> {/* Evita saltos de línea innecesarios */}
+          <TableHead>Carátula</TableHead>
+          <TableHead>Cliente</TableHead>
+          <TableHead>Estado</TableHead>
+          <TableHead>Próximo Plazo</TableHead>
+          <TableHead>Estado de Pago</TableHead>
+          <TableHead className="text-center">Acciones</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredCases.map((caseData) => {
+          const alertStatus = getCaseAlertStatus(caseData.plazos, caseData.estado)
+          const pendingOficio = hasPendingOficio(caseData.oficios)
+          const pendingTarea = hasPendingTarea(caseData.tareas)
+          const nextUpcoming = getNextUpcomingDeadline(caseData.plazos, caseData.estado)
 
-                    return (
-                      <TableRow key={caseData.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {alertStatus === "overdue" && (
-                              <span title="Plazos vencidos">
-                                <AlertCircle className="h-5 w-5 text-destructive" />
-                              </span>
-                            )}
-                            {alertStatus === "soon" && (
-                              <span title="Plazo próximo">
-                                <AlertTriangle className="h-5 w-5 text-orange-500" />
-                              </span>
-                            )}
-                            {pendingOficio && (
-                              <span title="Oficios pendientes">
-                                <FileIcon className="h-5 w-5 text-orange-600" />
-                              </span>
-                            )}
-                            {pendingTarea && (
-                              <span title="Tareas pendientes">
-                                <CheckSquare className="h-5 w-5 text-blue-600" />
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{caseData.tipo}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{caseData.expediente || "-"}</TableCell>
-                        <TableCell className="font-medium max-w-[250px] truncate">{caseData.caratula}</TableCell>
-                        <TableCell>{caseData.clienteNombre || "-"}</TableCell>
-                        <TableCell>{caseData.estado || "-"}</TableCell>
-                        <TableCell>
-                          {nextUpcoming ? (
-                            <div className="space-y-1">
-                              <p className="font-medium">{nextUpcoming.nombre}</p>
-                              <div className="flex items-center gap-2">
-                                <p className={cn(
-                                  "text-sm",
-                                  alertStatus === "overdue" && "text-destructive",
-                                  alertStatus === "soon" && "text-orange-500",
-                                  nextUpcoming.cumplido && "text-green-600 line-through"
-                                )}>
-                                  {nextUpcoming.cumplido 
-                                    ? "Cumplido" 
-                                    : formatDate(nextUpcoming.fecha)}
-                                </p>
-                                {nextUpcoming.cumplido && (
-                                  <CheckSquare className="h-4 w-4 text-green-600" />
-                                )}
-                              </div>
-                              {caseData.plazos && caseData.plazos.length > 1 && (
-                                <p className="text-xs text-muted-foreground">
-                                  +{caseData.plazos.length - 1} más
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">Sin plazos próximos</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={caseData.estadoPago}
-                            onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
-                          >
-                            <SelectTrigger className="w-28">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Pagado">Pagado</SelectItem>
-                              <SelectItem value="Debe">Debe</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => { setSelectedCase(caseData); setDetailsOpen(true) }}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(caseData)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setCaseToDelete(caseData)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+          return (
+            <TableRow key={caseData.id} className="hover:bg-muted/50">
+              <TableCell>
+                <div className="flex items-center gap-0.5 flex-wrap"> {/* Menos espacio entre íconos */}
+                  {alertStatus === "overdue" && (
+                    <span title="Plazos vencidos">
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                    </span>
+                  )}
+                  {alertStatus === "soon" && (
+                    <span title="Plazo próximo">
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    </span>
+                  )}
+                  {pendingOficio && (
+                    <span title="Oficios pendientes">
+                      <FileIcon className="h-4 w-4 text-orange-600" />
+                    </span>
+                  )}
+                  {pendingTarea && (
+                    <span title="Tareas pendientes">
+                      <CheckSquare className="h-4 w-4 text-blue-600" />
+                    </span>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline" className="text-xs px-2 py-0.5"> {/* Badge más compacto */}
+                  {caseData.tipo}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-mono text-xs whitespace-nowrap"> {/* Texto más pequeño y nowrap */}
+                {caseData.expediente || "-"}
+              </TableCell>
+              <TableCell className="font-medium max-w-[180px] truncate"> {/* Reducido de 250px */}
+                {caseData.caratula}
+              </TableCell>
+              <TableCell className="max-w-[150px] truncate">{caseData.clienteNombre || "-"}</TableCell>
+              <TableCell>{caseData.estado || "-"}</TableCell>
+              <TableCell>
+                {nextUpcoming ? (
+                  <div className="space-y-0.5"> {/* Menos espacio vertical */}
+                    <p className="font-medium text-xs">{nextUpcoming.nombre}</p> {/* Texto más pequeño */}
+                    <div className="flex items-center gap-1.5">
+                      <p className={cn(
+                        "text-xs font-medium", // Texto más pequeño
+                        alertStatus === "overdue" && "text-destructive",
+                        alertStatus === "soon" && "text-orange-500",
+                        nextUpcoming.cumplido && "text-green-600 line-through"
+                      )}>
+                        {nextUpcoming.cumplido ? "✓ Cumplido" : formatDate(nextUpcoming.fecha)}
+                      </p>
+                      {nextUpcoming.cumplido && (
+                        <CheckSquare className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                      )}
+                    </div>
+                    {caseData.plazos && caseData.plazos.length > 1 && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5"> {/* Texto muy pequeño */}
+                        +{caseData.plazos.length - 1} más
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground text-xs">Sin plazos</span>
+                )}
+              </TableCell>
+              <TableCell>
+                <Select
+                  value={caseData.estadoPago}
+                  onValueChange={(v: "Pagado" | "Debe") => handlePaymentStatusChange(caseData.id, v)}
+                >
+                  <SelectTrigger className="w-24 h-8 text-xs"> {/* Ancho reducido y texto pequeño */}
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pagado" className="text-sm">Pagado</SelectItem>
+                    <SelectItem value="Debe" className="text-sm">Debe</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableCell>
+              <TableCell  >
+                <div className="flex justify-end gap-1"> {/* Reducido gap-2 a gap-1 */}
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedCase(caseData); setDetailsOpen(true) }}>
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(caseData)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCaseToDelete(caseData)
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
+  </div>
+</div>
           </>
         )}
 

@@ -330,7 +330,7 @@ export default function ClientesPage() {
                     <TableHead>DNI/CUIT</TableHead>
                     <TableHead>Fecha de Alta</TableHead>
                     <TableHead>Deudas Pendientes</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

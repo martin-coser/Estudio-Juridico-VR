@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
-import { Scale, Home, Briefcase, Users, Calendar, Bell, LogOut } from "lucide-react"
+import { Scale, Home, Briefcase, Users, Calendar, Bell, LogOut, Archive } from "lucide-react"
 
 const navigation = [
   { name: "Inicio", href: "/", icon: Home },
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Clientes", href: "/clientes", icon: Users },
   { name: "Agenda", href: "/agenda", icon: Calendar },
   { name: "Notificaciones", href: "/notificaciones", icon: Bell },
+  { name: "Backup", href: "/backup", icon: Archive },
 ]
 
 export function AppSidebar() {
