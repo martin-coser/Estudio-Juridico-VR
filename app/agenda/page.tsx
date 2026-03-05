@@ -215,14 +215,15 @@ export default function AgendaPage() {
             </CardContent>
           </Card>
 
-          {/* Próximos eventos */}
-          <Card className="h-fit">
+          {/* Próximos eventos - VERSIÓN MOBILE FIX (sin overflow) */}
+          <Card className="h-fit w-full overflow-hidden">
             <CardHeader>
               <CardTitle className="text-xl">Próximos Eventos</CardTitle>
               <CardDescription>
                 {upcomingEvents.length} evento{upcomingEvents.length !== 1 && "s"}
               </CardDescription>
             </CardHeader>
+            
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex justify-center py-12">
@@ -241,11 +242,11 @@ export default function AgendaPage() {
                         <div
                           key={event.id}
                           className={cn(
-                            "p-4 hover:bg-accent/5 transition-colors",
+                            "p-3 sm:p-4 hover:bg-accent/5 transition-colors w-full",
                             today && "bg-primary/5"
                           )}
                         >
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start justify-between gap-3 w-full">
                             <div className="flex-1 min-w-0">
                               <h4 className={cn("font-semibold truncate", today && "text-primary")}>
                                 {event.titulo}
@@ -255,22 +256,25 @@ export default function AgendaPage() {
                                   {event.descripcion}
                                 </p>
                               )}
-                              <div className="flex flex-wrap gap-2 mt-3 text-sm">
-                                <Badge variant="secondary" className="gap-1 text-xs">
+                              
+                              {/* Badges más compactos en móvil */}
+                              <div className="flex flex-wrap gap-1.5 mt-3 text-xs">
+                                <Badge variant="secondary" className="gap-1">
                                   <Calendar className="h-3 w-3" />
                                   {formatDate(event.fecha)}
                                 </Badge>
-                                <Badge variant="secondary" className="gap-1 text-xs">
+                                <Badge variant="secondary" className="gap-1">
                                   <Clock className="h-3 w-3" />
                                   {event.hora}
                                 </Badge>
                                 {event.clienteNombre && (
-                                  <Badge variant="outline" className="gap-1 text-xs truncate max-w-[120px]">
+                                  <Badge variant="outline" className="gap-1 truncate max-w-[90px]">
                                     <User className="h-3 w-3" />
                                     {event.clienteNombre}
                                   </Badge>
                                 )}
                               </div>
+
                               {today && (
                                 <Badge className="mt-2" variant="default">
                                   Hoy
@@ -278,11 +282,12 @@ export default function AgendaPage() {
                               )}
                             </div>
 
+                            {/* Botones más pequeños en móvil */}
                             <div className="flex gap-1 flex-shrink-0">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9"
+                                className="h-8 w-8"
                                 onClick={() => handleEdit(event)}
                               >
                                 <Pencil className="h-4 w-4" />
@@ -290,7 +295,7 @@ export default function AgendaPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9"
+                                className="h-8 w-8"
                                 onClick={() => {
                                   setEventToDelete(event)
                                   setDeleteDialogOpen(true)
